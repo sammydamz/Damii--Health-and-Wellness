@@ -8,13 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
-  provideEmotionalSupport,
-  type EmotionalSupportOutput,
-} from '@/ai/flows/provide-emotional-support';
-import {
-  suggestPersonalizedWellnessTips,
-  type SuggestPersonalizedWellnessTipsOutput,
-} from '@/ai/flows/suggest-personalized-wellness-tips';
+  analyzeWellnessInputAndProvideSupport,
+  type WellnessSupportOutput,
+} from '@/ai/flows/analyze-wellness-input-and-provide-support';
 import { BeatLoader } from 'react-spinners';
 import { Separator } from '@/components/ui/separator';
 
@@ -24,14 +20,9 @@ const formSchema = z.object({
   }),
 });
 
-interface CombinedWellnessOutput {
-  emotionalSupport: string;
-  wellnessTips: string;
-}
-
 export function WellnessForm() {
   const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState<CombinedWellnessOutput | null>(null);
+  const [result, setResult] = useState<WellnessSupportOutput | null>(null);
 
   const {
     control,
@@ -48,17 +39,8 @@ export function WellnessForm() {
     setIsLoading(true);
     setResult(null);
     try {
-      // Call both flows in parallel
-      const [emotionalSupportRes, wellnessTipsRes] = await Promise.all([
-        provideEmotionalSupport({ feelingDescription: data.userInput }),
-        suggestPersonalizedWellnessTips({ feelings: data.userInput }),
-      ]);
-
-      setResult({
-        emotionalSupport: emotionalSupportRes.emotionalSupport,
-        wellnessTips: wellnessTipsRes.wellnessTips,
-      });
-
+      const response = await analyzeWellnessInputAndProvideSupport({ userInput: data.userInput });
+      setResult(response);
     } catch (error) {
       console.error('Error analyzing wellness input:', error);
     } finally {
