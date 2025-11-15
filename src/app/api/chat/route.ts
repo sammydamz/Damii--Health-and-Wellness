@@ -10,7 +10,8 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   const { messages } = await req.json();
 
-  const { stream } = await ai.generate({
+  const { stream } = ai.generate({
+    model: 'googleai/gemini-2.5-flash',
     prompt: messages,
     stream: true,
   });
