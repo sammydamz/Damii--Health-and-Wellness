@@ -4,11 +4,14 @@ import { ChatInput } from '@/components/wellness-assistant/chat-input';
 import { ChatMessages } from '@/components/wellness-assistant/chat-messages';
 import { useChat } from '@/hooks/use-chat';
 import { Card, CardContent } from '@/components/ui/card';
+import { getChatResponse } from '@/app/chat/actions';
 
 export function WellnessChat() {
   const { messages, input, handleInputChange, handleSubmit, isLoading } =
     useChat({
-      api: '/api/chat',
+      async onSend(messages) {
+        return getChatResponse(messages);
+      },
     });
 
   return (

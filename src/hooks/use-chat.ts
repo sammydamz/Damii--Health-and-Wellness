@@ -4,7 +4,11 @@ import { useState, useCallback } from 'react';
 import type { Message } from '@/lib/types';
 import { useToast } from './use-toast';
 
-export const useChat = ({ api }: { api: string }) => {
+interface UseChatOptions {
+  onSend: (messages: Message[]) => Promise<string>;
+}
+
+export const useChat = ({ onSend }: UseChatOptions) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -33,19 +37,9 @@ export const useChat = ({ api }: { api: string }) => {
       setInput('');
 
       try {
-        const response = await fetch(api, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: newMessages }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Something went wrong. Please try again.');
-        }
-
-        const { text } = await response.json();
+        const assistantResponse = await onSend(newMessages);
         
-        const assistantMessage: Message = { role: 'assistant', content: text };
+        const assistantMessage: Message = { role: 'assistant', content: assistantResponse };
         setMessages((prev) => [...prev, assistantMessage]);
 
       } catch (error) {
@@ -61,7 +55,7 @@ export const useChat = ({ api }: { api: string }) => {
         setIsLoading(false);
       }
     },
-    [input, messages, api, toast]
+    [input, messages, onSend, toast]
   );
 
   return {
