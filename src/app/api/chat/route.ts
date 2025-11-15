@@ -1,4 +1,3 @@
-'use client';
 import { ai } from '@/ai/genkit';
 import {NextRequest, NextResponse} from 'next/server';
 import { Message } from '@/lib/types';
