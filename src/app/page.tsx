@@ -17,16 +17,16 @@ export default function Home() {
           how you feel.
         </p>
 
-      <Tabs defaultValue="chat" className="w-full max-w-4xl mt-8">
+      <Tabs defaultValue="form" className="w-full max-w-4xl mt-8">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="chat">Chat with DAMII</TabsTrigger>
           <TabsTrigger value="form">Wellness Form</TabsTrigger>
+          <TabsTrigger value="chat">Chat with DAMII</TabsTrigger>
         </TabsList>
-        <TabsContent value="chat">
-          <WellnessChat />
-        </TabsContent>
         <TabsContent value="form">
           <WellnessForm />
+        </TabsContent>
+        <TabsContent value="chat">
+          <WellnessChat />
         </TabsContent>
       </Tabs>
     </div>
