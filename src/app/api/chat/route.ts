@@ -1,8 +1,7 @@
+'use client';
 import { ai } from '@/ai/genkit';
 import {NextRequest, NextResponse} from 'next/server';
 import { Message } from '@/lib/types';
-
-export const dynamic = 'force-dynamic';
 
 const systemPrompt = `You are DAMII: Your Wellness Assistant, a holistic AI tool designed to support users.
 
