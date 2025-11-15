@@ -16,7 +16,6 @@ const SuggestPersonalizedWellnessTipsInputSchema = z.object({
 export type SuggestPersonalizedWellnessTipsInput = z.infer<typeof SuggestPersonalizedWellnessTipsInputSchema>;
 
 const SuggestPersonalizedWellnessTipsOutputSchema = z.object({
-  emotionalSupport: z.string().describe('Validation, empathy, and coping strategies for stress, anxiety, or low mood.'),
   wellnessTips: z.string().describe('Actionable, evidence-based suggestions on hydration, sleep hygiene, light exercises and healthy nutrition.'),
 });
 export type SuggestPersonalizedWellnessTipsOutput = z.infer<typeof SuggestPersonalizedWellnessTipsOutputSchema>;
@@ -29,11 +28,11 @@ const prompt = ai.definePrompt({
   name: 'suggestPersonalizedWellnessTipsPrompt',
   input: {schema: SuggestPersonalizedWellnessTipsInputSchema},
   output: {schema: SuggestPersonalizedWellnessTipsOutputSchema},
-  prompt: `You are a wellness assistant that provides empathetic support and wellness tips based on how the user is feeling.
+  prompt: `You are a wellness assistant that provides actionable wellness tips based on how the user is feeling.
 
   Feelings: {{{feelings}}}
 
-  Provide emotional support and actionable wellness tips related to hydration, sleep hygiene, light exercises and healthy nutrition. `,
+  Provide actionable wellness tips related to hydration, sleep hygiene, light exercises and healthy nutrition.`,
 });
 
 const suggestPersonalizedWellnessTipsFlow = ai.defineFlow(
