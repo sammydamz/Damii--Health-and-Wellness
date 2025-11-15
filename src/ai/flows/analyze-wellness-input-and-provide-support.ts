@@ -25,26 +25,10 @@ export async function analyzeWellnessInputAndProvideSupport(input: AnalyzeWellne
   return analyzeWellnessInputAndProvideSupportFlow(input);
 }
 
-const searchWeb = ai.defineTool(
-  {
-    name: 'searchWeb',
-    description: 'Searches the web for information related to the user input to provide evidence-based wellness tips.',
-    inputSchema: z.object({
-      query: z.string().describe('The search query to use when searching the web.'),
-    }),
-    outputSchema: z.string(),
-  },
-  async input => {
-    // TODO: implement web search here
-    return `Web search results for ${input.query}: Placeholder result. Implement web search to provide real results`;
-  }
-);
-
 const wellnessPrompt = ai.definePrompt({
   name: 'wellnessPrompt',
   input: {schema: AnalyzeWellnessInputSchema},
   output: {schema: WellnessSupportOutputSchema},
-  tools: [searchWeb],
   prompt: `You are DAMII: Your Wellness Assistant, a holistic tool designed to support users who are feeling down or experiencing general health and wellness concerns. Provide a supportive and non-diagnostic response.
 
   User Input: {{{userInput}}}
@@ -52,10 +36,10 @@ const wellnessPrompt = ai.definePrompt({
   Instructions: Analyze the user input and provide a structured response in two main sections:
 
   1.  Emotional Support & Psychology: Offer validation, empathy, and general coping strategies for stress, anxiety, or low mood.
-  2.  General Wellness Tips: Provide safe, actionable advice (grounded in real-time web search results) on things like hydration, sleep hygiene, gentle movement, and nutrition to address physical discomfort or low energy.  Use the searchWeb tool to ground your response in real-time, evidence-based wellness tips.
+  2.  General Wellness Tips: Provide safe, actionable advice on things like hydration, sleep hygiene, gentle movement, and nutrition to address physical discomfort or low energy.
 
   Output:
-  `, 
+  `,
 });
 
 const analyzeWellnessInputAndProvideSupportFlow = ai.defineFlow(
