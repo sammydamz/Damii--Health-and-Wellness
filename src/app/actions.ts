@@ -40,7 +40,7 @@ export async function analyzeWellnessInputAndProvideSupport(
   `;
 
   const { output } = await ai.generate({
-    model: 'gemini-pro',
+    model: 'gemini-1.5-flash-latest',
     prompt,
     output: { schema: WellnessSupportOutputSchema },
   });
@@ -63,7 +63,7 @@ export async function getChatResponse(messages: Message[]): Promise<string> {
   }));
 
   const { text } = await ai.generate({
-    model: 'gemini-pro',
+    model: 'gemini-1.5-flash-latest',
     prompt: {
       system: systemPrompt,
       history,
