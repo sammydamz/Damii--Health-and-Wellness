@@ -1,7 +1,7 @@
 'use client';
 
-import { WellnessForm } from '@/components/wellness-assistant/wellness-form';
-import { WellnessChat } from '@/components/wellness-assistant/wellness-chat';
+import { WellnessForm } from '@/components/wellness-form';
+import { WellnessChat } from '@/app/wellness-chat';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HandInHeart } from '@/components/icons/hand-in-heart';
 

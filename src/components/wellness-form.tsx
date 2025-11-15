@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import {
   analyzeWellnessInputAndProvideSupport,
   type WellnessSupportOutput,
-} from '@/ai/flows/analyze-wellness-input-and-provide-support';
+} from '@/app/actions';
 import { BeatLoader } from 'react-spinners';
 import { Separator } from '@/components/ui/separator';
 
@@ -39,7 +39,7 @@ export function WellnessForm() {
     setIsLoading(true);
     setResult(null);
     try {
-      const response = await analyzeWellnessInputAndProvideSupport({ userInput: data.userInput });
+      const response = await analyzeWellnessInputAndProvideSupport(data.userInput);
       setResult(response);
     } catch (error) {
       console.error('Error analyzing wellness input:', error);
@@ -53,7 +53,7 @@ export function WellnessForm() {
       <CardHeader>
         <CardTitle className="font-headline">Wellness Check-in</CardTitle>
         <CardDescription>
-          Tell us how you&apos;re feeling, and we&apos;ll provide some support and tips.
+          Tell us how you're feeling, and we'll provide some support and tips.
         </CardDescription>
       </CardHeader>
       <CardContent>

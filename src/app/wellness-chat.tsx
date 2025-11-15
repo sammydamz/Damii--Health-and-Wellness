@@ -1,10 +1,10 @@
 'use client';
 
-import { ChatInput } from '@/components/wellness-assistant/chat-input';
-import { ChatMessages } from '@/components/wellness-assistant/chat-messages';
+import { ChatInput } from '@/components/chat-input';
+import { ChatMessages } from '@/components/chat-messages';
 import { useChat } from '@/hooks/use-chat';
 import { Card, CardContent } from '@/components/ui/card';
-import { getChatResponse } from '@/app/chat/actions';
+import { getChatResponse } from '@/app/actions';
 
 export function WellnessChat() {
   const { messages, input, handleInputChange, handleSubmit, isLoading } =
