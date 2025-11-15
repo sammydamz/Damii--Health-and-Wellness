@@ -40,7 +40,7 @@ export async function analyzeWellnessInputAndProvideSupport(
   `;
 
   const { output } = await ai.generate({
-    model: 'gemini-1.5-flash-latest',
+    model: 'gemini-1.5-flash',
     prompt,
     output: { schema: WellnessSupportOutputSchema },
   });
@@ -65,7 +65,7 @@ export async function getChatResponse(messages: Message[]): Promise<string> {
   const lastMessage = messages[messages.length - 1];
 
   const { text } = await ai.generate({
-    model: 'gemini-1.5-flash-latest',
+    model: 'gemini-1.5-flash',
     prompt: lastMessage.content,
     history,
     config: {
