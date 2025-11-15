@@ -1,8 +1,13 @@
 'use server';
 
-import { ai } from '@/ai/genkit';
+import { genkit, z } from 'genkit';
+import { googleAI } from '@genkit-ai/google-genai';
 import type { Message } from '@/lib/types';
-import { z } from 'genkit';
+
+// Initialize Genkit and the Google AI plugin within the server-only module.
+const ai = genkit({
+  plugins: [googleAI()],
+});
 
 // Combined Wellness Flow
 const WellnessSupportOutputSchema = z.object({
@@ -35,14 +40,13 @@ export async function analyzeWellnessInputAndProvideSupport(
   `;
 
   const { output } = await ai.generate({
-    model: 'googleai/gemini-2.5-flash',
+    model: 'gemini-2.5-flash',
     prompt,
     output: { schema: WellnessSupportOutputSchema },
   });
 
   return output!;
 }
-
 
 // Chat Flow
 const systemPrompt = `You are DAMII: Your Wellness Assistant, a holistic AI tool designed to support users.
@@ -59,7 +63,7 @@ export async function getChatResponse(messages: Message[]): Promise<string> {
   }));
 
   const { text } = await ai.generate({
-    model: 'googleai/gemini-2.5-flash',
+    model: 'gemini-2.5-flash',
     prompt: {
       system: systemPrompt,
       history,
