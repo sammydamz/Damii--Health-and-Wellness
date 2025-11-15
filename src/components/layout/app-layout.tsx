@@ -3,7 +3,8 @@
 import type { FC, ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BrainCircuit, Home, LayoutDashboard } from 'lucide-react';
+import { Home, LayoutDashboard } from 'lucide-react';
+import { HandInHeart } from '@/components/icons/hand-in-heart';
 import {
   SidebarProvider,
   Sidebar,
@@ -36,7 +37,7 @@ export const AppLayout: FC<AppLayoutProps> = ({ children }) => {
               asChild
             >
               <Link href="/">
-                <BrainCircuit className="size-6" />
+                <HandInHeart className="size-6" />
               </Link>
             </Button>
             <div className="flex flex-col">

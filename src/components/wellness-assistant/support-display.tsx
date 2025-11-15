@@ -4,8 +4,9 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { BrainCircuit, HeartPulse } from 'lucide-react';
+import { HeartPulse } from 'lucide-react';
 import type { WellnessSupportOutput } from '@/ai/flows/analyze-wellness-input-and-provide-support';
+import { HandInHeart } from '../icons/hand-in-heart';
 
 interface SupportDisplayProps {
   data: WellnessSupportOutput;
@@ -30,7 +31,7 @@ export function SupportDisplay({ data }: SupportDisplayProps) {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-3 font-headline text-xl">
-            <BrainCircuit className="text-primary" />
+            <HandInHeart className="text-primary" />
             Wellness Tips
           </CardTitle>
         </CardHeader>
