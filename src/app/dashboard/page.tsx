@@ -6,16 +6,26 @@ import type { WellnessLog } from '@/lib/types';
 import { ActivityLogger } from '@/components/dashboard/activity-logger';
 import { MoodHistoryChart } from '@/components/dashboard/mood-history-chart';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useUser } from '@/firebase';
+import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
   const [logs, setLogs] = useLocalStorage<WellnessLog[]>('wellness-logs', []);
   const [isClient, setIsClient] = useState(false);
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  if (!isClient) {
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.replace('/login');
+    }
+  }, [user, isUserLoading, router]);
+
+  if (isUserLoading || !user || !isClient) {
     return (
       <div className="space-y-8">
         <Skeleton className="h-64 w-full" />
