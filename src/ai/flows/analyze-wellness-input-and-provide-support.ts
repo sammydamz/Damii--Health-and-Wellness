@@ -29,6 +29,7 @@ const wellnessPrompt = ai.definePrompt({
   name: 'wellnessPrompt',
   input: {schema: AnalyzeWellnessInputSchema},
   output: {schema: WellnessSupportOutputSchema},
+  model: 'googleai/gemini-2.5-flash',
   prompt: `You are DAMII: Your Wellness Assistant, a holistic tool designed to support users who are feeling down or experiencing general health and wellness concerns. Provide a supportive and non-diagnostic response.
 
   User Input: {{{userInput}}}
