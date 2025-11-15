@@ -1,0 +1,63 @@
+{
+  "entities": {
+    "UserAccount": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserAccount",
+      "type": "object",
+      "description": "Stores user account information, excluding sensitive authentication data.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user account."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address for login and communication.",
+          "format": "email"
+        },
+        "username": {
+          "type": "string",
+          "description": "User's username for display purposes."
+        },
+        "registrationDate": {
+          "type": "string",
+          "description": "Date and time when the user registered.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "username",
+        "registrationDate"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "UserAccount",
+          "schema": {
+            "$ref": "#/backend/entities/UserAccount"
+          },
+          "description": "Stores user account information.  Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "This Firestore structure prioritizes authorization independence and clarity for the DAMII application. User data is stored under `/users/{userId}`. This structure ensures that each document's security can be evaluated independently, avoiding complex hierarchical `get()` calls in security rules. \n\nDenormalization is key. The `UserAccount` data includes all necessary information for user-specific operations.\n\nThis structure enables straightforward `list` operations within each user's private data, fulfilling the QAPs. Since access to `/users/{userId}/*` is restricted to the user identified by `{userId}`, unauthorized listing of other users' data is prevented. The use of path-based ownership ensures secure data access and manipulation."
+  }
+}
