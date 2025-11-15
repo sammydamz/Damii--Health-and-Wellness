@@ -5,6 +5,7 @@ import type { WellnessSupportOutput } from '@/ai/flows/analyze-wellness-input-an
 import { SupportDisplay } from '@/components/wellness-assistant/support-display';
 import { WellnessForm } from '@/components/wellness-assistant/wellness-form';
 import { Skeleton } from '@/components/ui/skeleton';
+import { HandInHeart } from '@/components/icons/hand-in-heart';
 
 export default function Home() {
   const [supportData, setSupportData] = useState<WellnessSupportOutput | null>(null);
@@ -13,8 +14,9 @@ export default function Home() {
 
   return (
     <div className="container mx-auto flex max-w-4xl flex-col items-center gap-8">
-      <div className="text-center">
-        <h1 className="font-headline text-4xl font-bold tracking-tight lg:text-5xl">
+      <div className="flex flex-col items-center text-center">
+        <HandInHeart className="size-16 text-primary" />
+        <h1 className="mt-4 font-headline text-4xl font-bold tracking-tight lg:text-5xl">
           How are you feeling today?
         </h1>
         <p className="mt-4 max-w-2xl text-lg text-muted-foreground">
