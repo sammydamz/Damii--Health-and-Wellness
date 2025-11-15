@@ -57,16 +57,19 @@ const systemPrompt = `You are DAMII: Your Wellness Assistant, a holistic AI tool
 - Keep your responses concise and easy to understand.`;
 
 export async function getChatResponse(messages: Message[]): Promise<string> {
-  const history = messages.map((msg) => ({
+  const history = messages.slice(0, -1).map((msg) => ({
     role: msg.role,
     content: [{ text: msg.content }],
   }));
 
+  const lastMessage = messages[messages.length - 1];
+
   const { text } = await ai.generate({
     model: 'gemini-1.5-flash-latest',
-    prompt: {
-      system: systemPrompt,
-      history,
+    prompt: lastMessage.content,
+    history,
+    config: {
+        system: systemPrompt,
     },
   });
 
