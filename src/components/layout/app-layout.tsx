@@ -44,7 +44,7 @@ export const AppLayout: FC<AppLayoutProps> = ({ children }) => {
                 DAMII
               </h2>
               <p className="text-xs text-muted-foreground">
-                Wellness Navigator
+                Wellness Assistant
               </p>
             </div>
           </div>

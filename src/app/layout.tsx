@@ -4,7 +4,7 @@ import { AppLayout } from '@/components/layout/app-layout';
 import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
-  title: 'DAMII: Wellness Navigator',
+  title: 'DAMII: Wellness Assistant',
   description: 'Your holistic wellness assistant for mental and physical support.',
 };
 
