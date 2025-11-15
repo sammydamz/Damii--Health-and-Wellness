@@ -80,8 +80,8 @@ export const AppLayout: FC<AppLayoutProps> = ({ children }) => {
         </SidebarContent>
       </Sidebar>
       <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-14 items-center justify-start border-b bg-background/80 px-4 backdrop-blur-sm lg:px-6">
-          <SidebarTrigger className="md:hidden" />
+        <header className="sticky top-0 z-10 flex h-14 items-center justify-start border-b bg-emerald-600 px-4 text-primary-foreground backdrop-blur-sm lg:px-6">
+          <SidebarTrigger className="text-primary-foreground md:hidden" />
           <h1 className="font-headline text-xl font-semibold">
             {pathname === '/dashboard' ? 'Dashboard' : 'Wellness Assistant'}
           </h1>
