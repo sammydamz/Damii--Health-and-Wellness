@@ -28,41 +28,26 @@ export const useChat = ({ api }: { api: string }) => {
 
       setIsLoading(true);
       const userMessage: Message = { role: 'user', content: input };
-      setMessages((prev) => [...prev, userMessage]);
+      const newMessages: Message[] = [...messages, userMessage];
+      setMessages(newMessages);
       setInput('');
 
       try {
         const response = await fetch(api, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: [...messages, userMessage] }),
+          body: JSON.stringify({ messages: newMessages }),
         });
 
-        if (!response.body) {
-          throw new Error('No response body');
+        if (!response.ok) {
+          throw new Error('Something went wrong. Please try again.');
         }
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let assistantMessage = '';
+        const { text } = await response.json();
+        
+        const assistantMessage: Message = { role: 'assistant', content: text };
+        setMessages((prev) => [...prev, assistantMessage]);
 
-        setMessages((prev) => [
-          ...prev,
-          { role: 'assistant', content: '' },
-        ]);
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          assistantMessage += decoder.decode(value, { stream: true });
-
-          setMessages((prev) => {
-            const newMessages = [...prev];
-            newMessages[newMessages.length - 1].content = assistantMessage;
-            return newMessages;
-          });
-        }
       } catch (error) {
         toast({
           variant: 'destructive',
@@ -70,7 +55,8 @@ export const useChat = ({ api }: { api: string }) => {
           description:
             error instanceof Error ? error.message : 'Please try again.',
         });
-        setMessages((prev) => prev.slice(0, -1)); // Remove user message on error
+        // On error, remove the optimistic user message.
+        setMessages((prev) => prev.slice(0, -1));
       } finally {
         setIsLoading(false);
       }

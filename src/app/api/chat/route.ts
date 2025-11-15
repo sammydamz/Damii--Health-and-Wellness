@@ -1,11 +1,7 @@
 import { ai } from '@/ai/genkit';
-import {NextRequest} from 'next/server';
+import {NextRequest, NextResponse} from 'next/server';
 import { Message } from '@/lib/types';
 
-// IMPORTANT:
-// To make streaming work, you need to set the runtime to `edge`.
-// Not all models and tools support streaming, so this may not always be an option.
-// export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 const systemPrompt = `You are DAMII: Your Wellness Assistant, a holistic AI tool designed to support users.
@@ -26,11 +22,12 @@ export async function POST(req: NextRequest) {
     ...messages,
   ];
 
-  const { stream } = await ai.generate({
+  const response = await ai.generate({
     model: 'googleai/gemini-2.5-flash',
     prompt: fullPrompt,
-    stream: true,
   });
 
-  return new Response(stream.text());
+  const text = response.text;
+
+  return NextResponse.json({ text });
 }
