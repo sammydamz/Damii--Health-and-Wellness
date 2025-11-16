@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import {
   Popover,
   PopoverContent,
@@ -21,7 +22,7 @@ import {
 } from '@/components/ui/card';
 import type { WellnessLog } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, Save } from 'lucide-react';
+import { CalendarIcon, Save, Plus, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser } from '@/firebase';
 import { saveMoodLog } from '@/firebase/user-actions';
@@ -48,6 +49,8 @@ export function ActivityLogger({ logs, setLogs }: ActivityLoggerProps) {
   const [date, setDate] = useState<Date>(startOfToday());
   const [mood, setMood] = useState<number>(3);
   const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
+  const [customActivity, setCustomActivity] = useState<string>('');
+  const [customActivities, setCustomActivities] = useState<string[]>([]);
   const [isCalendarOpen, setCalendarOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
@@ -59,11 +62,21 @@ export function ActivityLogger({ logs, setLogs }: ActivityLoggerProps) {
     const logForDate = logs.find((log) => log.date === formattedDate);
     if (logForDate) {
       setMood(logForDate.mood);
-      setSelectedActivities(logForDate.activities);
+      // Separate predefined activities from custom ones
+      const predefined = logForDate.activities.filter(act => 
+        activitiesList.some(a => a.id === act)
+      );
+      const custom = logForDate.activities.filter(act => 
+        !activitiesList.some(a => a.id === act)
+      );
+      setSelectedActivities(predefined);
+      setCustomActivities(custom);
     } else {
       setMood(3);
       setSelectedActivities([]);
+      setCustomActivities([]);
     }
+    setCustomActivity('');
   }, [date, logs]);
 
   const handleSave = async () => {
@@ -79,11 +92,14 @@ export function ActivityLogger({ logs, setLogs }: ActivityLoggerProps) {
     setIsSaving(true);
     const formattedDate = format(date, 'yyyy-MM-dd');
     
+    // Combine predefined and custom activities
+    const allActivities = [...selectedActivities, ...customActivities];
+    
     try {
       // Save to Firestore
       await saveMoodLog(firestore, user.uid, {
         mood,
-        activities: selectedActivities,
+        activities: allActivities,
         date: formattedDate,
       });
 
@@ -91,7 +107,7 @@ export function ActivityLogger({ logs, setLogs }: ActivityLoggerProps) {
       const newLog: WellnessLog = {
         date: formattedDate,
         mood,
-        activities: selectedActivities,
+        activities: allActivities,
       };
 
       setLogs((prevLogs) => {
@@ -122,6 +138,25 @@ export function ActivityLogger({ logs, setLogs }: ActivityLoggerProps) {
     setSelectedActivities((prev) =>
       checked ? [...prev, activityId] : prev.filter((id) => id !== activityId)
     );
+  };
+
+  const handleAddCustomActivity = () => {
+    const trimmed = customActivity.trim();
+    if (trimmed && !customActivities.includes(trimmed)) {
+      setCustomActivities((prev) => [...prev, trimmed]);
+      setCustomActivity('');
+    }
+  };
+
+  const handleRemoveCustomActivity = (activity: string) => {
+    setCustomActivities((prev) => prev.filter((a) => a !== activity));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddCustomActivity();
+    }
   };
 
   return (
@@ -200,6 +235,53 @@ export function ActivityLogger({ logs, setLogs }: ActivityLoggerProps) {
                   </label>
                 </div>
               ))}
+            </div>
+            
+            {/* Custom Activities Section */}
+            <div className="mt-4 space-y-2">
+              <Label htmlFor="custom-activity">Add Custom Activity</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="custom-activity"
+                  type="text"
+                  placeholder="e.g., Went for a walk"
+                  value={customActivity}
+                  onChange={(e) => setCustomActivity(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleAddCustomActivity}
+                  disabled={!customActivity.trim()}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              {/* Display custom activities */}
+              {customActivities.length > 0 && (
+                <div className="space-y-1 mt-2">
+                  {customActivities.map((activity, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between bg-muted/50 rounded-md px-3 py-2 text-sm"
+                    >
+                      <span>{activity}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveCustomActivity(activity)}
+                        className="h-6 w-6 p-0"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
