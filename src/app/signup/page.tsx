@@ -21,11 +21,12 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { useAuth, useFirestore } from '@/firebase';
-import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createUserProfile } from '@/firebase/user-actions';
+import { useEffect } from 'react';
 
 const formSchema = z.object({
   username: z.string().min(2, { message: 'Username must be at least 2 characters.' }),
@@ -74,18 +75,36 @@ export default function SignupPage() {
     },
   });
 
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then(async (userCredential) => {
+        if (userCredential) {
+          // This means the user has just been redirected back from Google
+          await createUserProfile(firestore, userCredential.user, {
+            username: userCredential.user.displayName || 'Google User',
+          });
+          toast({
+            title: 'Account Created',
+            description: 'Welcome!',
+          });
+          router.push('/dashboard');
+        }
+      })
+      .catch((error) => {
+        // Handle Errors here.
+        toast({
+          variant: 'destructive',
+          title: 'Sign Up Failed',
+          description: error.message,
+        });
+      });
+  }, [auth, firestore, router, toast]);
+
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      const userCredential = await signInWithPopup(auth, provider);
-      await createUserProfile(firestore, userCredential.user, {
-        username: userCredential.user.displayName || 'Google User',
-      });
-      toast({
-        title: 'Account Created',
-        description: 'Welcome!',
-      });
-      router.push('/dashboard');
+      // Using signInWithRedirect is better for mobile compatibility
+      await signInWithRedirect(auth, provider);
     } catch (error: any) {
       toast({
         variant: 'destructive',

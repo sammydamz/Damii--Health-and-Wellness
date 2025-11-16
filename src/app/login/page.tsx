@@ -21,7 +21,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { useAuth } from '@/firebase';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -69,12 +69,11 @@ export default function LoginPage() {
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
-      toast({
-        title: 'Login Successful',
-        description: 'Welcome back!',
-      });
-      router.push('/dashboard');
+      // Using signInWithRedirect is better for mobile compatibility
+      await signInWithRedirect(auth, provider);
+      // The redirect will cause the page to unload, so the code below might not execute
+      // until the user is redirected back. It's common to handle the result of the redirect
+      // in a useEffect on the main page or dashboard.
     } catch (error: any) {
       toast({
         variant: 'destructive',
