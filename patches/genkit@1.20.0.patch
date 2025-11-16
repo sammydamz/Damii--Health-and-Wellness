@@ -1,0 +1,44 @@
+diff --git a/node_modules/genkit/dist/store/index.js b/node_modules/genkit/dist/store/index.js
+index c8f323c..8d543e3 100644
+--- a/node_modules/genkit/dist/store/index.js
++++ b/node_modules/genkit/dist/store/index.js
+@@ -2,8 +2,6 @@
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.getStore = exports.registerStore = exports.DEFAULT_STORE_ID = void 0;
+ const __1 = require("..");
+-const fs = require("fs");
+-const path = require("path");
+ const index_1 = require("../utils/index");
+ exports.DEFAULT_STORE_ID = 'default';
+ const g = global;
+diff --git a/node_modules/genkit/dist/store/index.mjs b/node_modules/genkit/dist/store/index.mjs
+index 73b40cc..5c48b29 100644
+--- a/node_modules/genkit/dist/store/index.mjs
++++ b/node_modules/genkit/dist/store/index.mjs
+@@ -1,7 +1,5 @@
+ import { GenkitError } from '..';
+-import * as fs from 'fs';
+-import * as path from 'path';
+ import { loadModule } from '../utils/index';
+ export const DEFAULT_STORE_ID = 'default';
+ const g = global;
+diff --git a/node_modules/genkit/package.json b/node_modules/genkit/package.json
+index 451a942..e2d0953 100644
+--- a/node_modules/genkit/package.json
++++ b/node_modules/genkit/package.json
+@@ -69,6 +69,13 @@
+     "lib": "dist"
+   },
+   "files": [
+-    "dist"
+-  ]
++    "dist/**/!(*.map)"
++  ],
++  "browser": {
++    "./dist/store/index.js": "./dist/store/index.browser.js",
++    "./dist/store/index.mjs": "./dist/store/index.browser.mjs"
++  },
++  "engines": {
++    "node": ">= 18.0.0"
++  }
+ }

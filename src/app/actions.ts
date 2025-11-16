@@ -1,13 +1,8 @@
 'use server';
 
-import { genkit, z } from 'genkit';
-import { googleAI } from '@genkit-ai/google-genai';
+import { z } from 'genkit';
+import { ai } from '@/ai/genkit';
 import type { Message } from '@/lib/types';
-
-// Initialize Genkit and the Google AI plugin within the server-only module.
-const ai = genkit({
-  plugins: [googleAI()],
-});
 
 // Combined Wellness Flow
 const WellnessSupportOutputSchema = z.object({
