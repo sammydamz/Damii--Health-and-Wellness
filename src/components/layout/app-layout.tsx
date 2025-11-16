@@ -3,7 +3,7 @@
 import type { FC, ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, LayoutDashboard, LogOut } from 'lucide-react';
+import { Home, LayoutDashboard, LogOut, FolderHeart } from 'lucide-react';
 import { HandInHeart } from '@/components/icons/hand-in-heart';
 import {
   SidebarProvider,
@@ -99,6 +99,18 @@ export const AppLayout: FC<AppLayoutProps> = ({ children }) => {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === '/plans'}
+                tooltip="My Plans"
+              >
+                <Link href="/plans">
+                  <FolderHeart />
+                  <span>My Plans</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
@@ -132,7 +144,7 @@ export const AppLayout: FC<AppLayoutProps> = ({ children }) => {
           <div className="flex items-center">
             <SidebarTrigger className="text-primary-foreground md:hidden" />
             <h1 className="font-headline text-xl font-semibold">
-              {pathname === '/dashboard' ? 'Dashboard' : 'Wellness Assistant'}
+              {pathname === '/dashboard' ? 'Dashboard' : pathname === '/plans' ? 'My Plans' : 'Wellness Assistant'}
             </h1>
           </div>
           {!user && !isUserLoading && (
