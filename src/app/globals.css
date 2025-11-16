@@ -13,19 +13,20 @@ body {
 }
 
 @layer base {
-  /**
-   * Color definitions using OKLCH color space for improved perceptual uniformity.
+  /*
+   * Color System: OKLCH
    * 
-   * OKLCH (Oklab Lightness Chroma Hue) provides better color manipulation and
-   * more perceptually uniform color gradients compared to traditional RGB/HSL.
+   * This application uses the OKLCH color space for improved perceptual uniformity
+   * and color accuracy across different displays. OKLCH provides more consistent
+   * brightness and better interpolation compared to traditional HSL/RGB.
    * 
    * Browser Compatibility:
-   * - Chrome/Edge: 111+
-   * - Safari: 15.4+
-   * - Firefox: 113+
+   * - Chrome/Edge 111+
+   * - Safari 15.4+
+   * - Firefox 113+
    * 
-   * For older browsers, fallback colors are automatically generated using
-   * the @csstools/postcss-oklab-function PostCSS plugin.
+   * For broader compatibility, consider using a PostCSS plugin like
+   * @csstools/postcss-oklab-function to provide automatic fallbacks.
    */
   :root {
     --background: oklch(0.9751 0.0127 244.2507);
