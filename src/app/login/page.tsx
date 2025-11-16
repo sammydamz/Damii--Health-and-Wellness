@@ -96,7 +96,8 @@ export default function LoginPage() {
           title: 'Login Successful',
           description: 'Welcome!',
         });
-        // The other useEffect will handle the redirect now that the user object is available.
+        // Ensure immediate navigation after successful redirect-based login
+        router.replace('/dashboard');
       })
       .catch((err) => {
         toast({
@@ -120,7 +121,8 @@ export default function LoginPage() {
         title: 'Login Successful',
         description: 'Welcome back!',
       });
-      // The useEffect hook will handle redirecting to the dashboard
+      // Navigate immediately; dashboard will handle rendering after auth settles
+      router.replace('/dashboard');
     } catch (err: any) {
       toast({
         variant: 'destructive',

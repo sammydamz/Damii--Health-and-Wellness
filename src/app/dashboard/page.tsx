@@ -6,7 +6,7 @@ import type { WellnessLog } from '@/lib/types';
 import { ActivityLogger } from '@/components/dashboard/activity-logger';
 import { MoodHistoryChart } from '@/components/dashboard/mood-history-chart';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useUser } from '@/firebase';
+import { useUser, useAuth } from '@/firebase';
 import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
@@ -14,6 +14,7 @@ export default function DashboardPage() {
   const [isClient, setIsClient] = useState(false);
 
   const { user, isUserLoading } = useUser();
+  const auth = useAuth();
   const router = useRouter();
 
   // Ensure client hydration is complete before doing anything
@@ -23,11 +24,12 @@ export default function DashboardPage() {
 
   // Redirect unauthenticated users
   useEffect(() => {
-    // Only redirect if hydration is complete, auth is not loading, and there's no user
-    if (isClient && !isUserLoading && !user) {
+    // Only redirect if hydration is complete, auth is not loading,
+    // and neither the context user nor the immediate auth.currentUser exist.
+    if (isClient && !isUserLoading && !user && !auth.currentUser) {
       router.replace('/login');
     }
-  }, [user, isUserLoading, isClient, router]);
+  }, [user, isUserLoading, isClient, router, auth]);
 
   // Show a loading state while Firebase is authenticating or the client is hydrating
   if (!isClient || isUserLoading) {
@@ -39,8 +41,11 @@ export default function DashboardPage() {
     );
   }
 
-  // If there's no user, we are in the process of redirecting, so don't render the dashboard.
-  if (!user) {
+  // If there's no user yet but auth has a currentUser, allow render while context catches up.
+  const isAuthenticated = !!(user || auth.currentUser);
+
+  // If there's no user, we are in the process of redirecting or settling auth; don't render.
+  if (!isAuthenticated) {
     return null;
   }
 

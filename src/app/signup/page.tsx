@@ -109,7 +109,8 @@ export default function SignupPage() {
           title: 'Account Created',
           description: 'Welcome!',
         });
-        // The other useEffect will handle the redirect now that the user object is available.
+        // Navigate immediately after Google redirect success
+        router.replace('/dashboard');
       })
       .catch((error) => {
         toast({
@@ -161,7 +162,8 @@ export default function SignupPage() {
         title: 'Account Created',
         description: "You've successfully signed up!",
       });
-      // The useEffect hook will handle redirecting to the dashboard
+      // Navigate immediately after successful email sign up
+      router.replace('/dashboard');
     } catch (error: any) {
       toast({
         variant: 'destructive',
