@@ -41,6 +41,16 @@ service cloud.firestore {
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id; // Prevents changing the user ID.
       allow delete: if isExistingOwner(userId);
+
+      // Allow users to read/write their own mood logs
+      match /moodLogs/{logId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Allow users to read/write their own chat history
+      match /chatHistory/{messageId} {
+        allow read, write: if isOwner(userId);
+      }
     }
   }
 }
