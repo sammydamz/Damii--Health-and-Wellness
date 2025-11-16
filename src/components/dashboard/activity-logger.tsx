@@ -147,7 +147,7 @@ export function ActivityLogger({ logs, setLogs }: ActivityLoggerProps) {
 
           <div className="space-y-4">
             <Label>Activities</Label>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-1">
               {activitiesList.map((activity) => (
                 <div key={activity.id} className="flex items-center space-x-2">
                   <Checkbox
