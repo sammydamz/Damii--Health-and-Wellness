@@ -28,7 +28,8 @@ import {
 import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
 } from 'firebase/auth';
 
 import { useAuth, useFirestore, useUser } from '@/firebase';
@@ -80,25 +81,36 @@ export default function LoginPage() {
     }
   }, [user, isUserLoading, router]);
 
+  // Handle the result from Google's redirect
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (result) {
+          // This is the first time the user is logging in with Google.
+          // Create a profile for them.
+          await createUserProfile(firestore, result.user, {
+            username: result.user.displayName || 'Google User',
+          });
+          toast({
+            title: 'Login Successful',
+            description: 'Welcome!',
+          });
+          // The other useEffect will handle the redirect now that the user object is available.
+        }
+      })
+      .catch((err) => {
+        toast({
+          variant: 'destructive',
+          title: 'Google Login Error',
+          description: err.message,
+        });
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth, firestore, toast]);
+
   const handleGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
-    try {
-      const result = await signInWithPopup(auth, provider);
-      await createUserProfile(firestore, result.user, {
-        username: result.user.displayName || 'Google User',
-      });
-      toast({
-        title: 'Login Successful',
-        description: 'Welcome!',
-      });
-      // The useEffect above will handle the redirect
-    } catch (err: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Google Login Error',
-        description: err.message,
-      });
-    }
+    await signInWithRedirect(auth, provider);
   };
 
   const onSubmit = async (values: any) => {
@@ -108,7 +120,7 @@ export default function LoginPage() {
         title: 'Login Successful',
         description: 'Welcome back!',
       });
-      // The useEffect above will handle the redirect
+      // The useEffect hook will handle redirecting to the dashboard
     } catch (err: any) {
       toast({
         variant: 'destructive',
@@ -117,6 +129,10 @@ export default function LoginPage() {
       });
     }
   };
+
+  if (isUserLoading || user) {
+    return null; // Don't render the form while loading or if user is already logged in
+  }
 
   return (
     <div className="flex min-h-full flex-col justify-center">

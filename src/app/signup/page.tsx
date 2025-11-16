@@ -26,7 +26,8 @@ import {
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
 } from 'firebase/auth';
 
 import { useAuth, useFirestore, useUser } from '@/firebase';
@@ -94,6 +95,31 @@ export default function SignupPage() {
     }
   }, [user, isUserLoading, router]);
 
+  // Handle the result from Google's redirect
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (result) {
+          await createUserProfile(firestore, result.user, {
+            username: result.user.displayName || 'Google User',
+          });
+          toast({
+            title: 'Account Created',
+            description: 'Welcome!',
+          });
+          // The other useEffect will handle the redirect now that the user object is available.
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'destructive',
+          title: 'Sign Up Failed',
+          description: error.message,
+        });
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth, firestore, toast]);
+
   // -------------------------
   // Form Setup
   // -------------------------
@@ -112,23 +138,7 @@ export default function SignupPage() {
   // -------------------------
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
-    try {
-      const result = await signInWithPopup(auth, provider);
-      await createUserProfile(firestore, result.user, {
-        username: result.user.displayName || 'Google User',
-      });
-      toast({
-        title: 'Account Created',
-        description: 'Welcome!',
-      });
-      // The useEffect hook will handle redirecting to the dashboard
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Google Sign-In Failed',
-        description: error.message,
-      });
-    }
+    await signInWithRedirect(auth, provider);
   };
 
   // -------------------------
@@ -159,6 +169,10 @@ export default function SignupPage() {
       });
     }
   };
+  
+  if (isUserLoading || user) {
+    return null; // Don't render the form while loading or if user is already logged in
+  }
 
   // --------------------------------------------------
   // UI
