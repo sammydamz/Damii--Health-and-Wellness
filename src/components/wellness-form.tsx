@@ -14,6 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { ConsentModal } from '@/components/modals/consent-modal';
+import { SavePlanModal } from '@/components/modals/save-plan-modal';
 import { WellnessPlanView } from '@/components/wellness/plan-view';
 import { useFirebase } from '@/firebase/provider';
 import { saveWellnessPlan } from '@/firebase/user-actions';
@@ -29,6 +30,7 @@ export function WellnessForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<WellnessPlanOutput | null>(null);
   const [showConsent, setShowConsent] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
   const { user, firestore } = useFirebase();
   const { toast } = useToast();
 
@@ -62,14 +64,33 @@ export function WellnessForm() {
   };
 
   const handleSavePlan = () => {
-    setShowConsent(true);
+    if (!user) {
+      setShowConsent(true);
+    } else {
+      setShowSaveModal(true);
+    }
   };
 
   const handleConsent = async () => {
+    setShowConsent(false);
+    // After consent, show save modal
+    setShowSaveModal(true);
+  };
+
+  const handleSaveWithName = async (customName: string) => {
     if (!user || !result) return;
 
     try {
-      await saveWellnessPlan(firestore, user.uid, result);
+      // Update the plan title with custom name if provided
+      const planToSave = {
+        ...result,
+        personalizedPlan: {
+          ...result.personalizedPlan,
+          title: customName,
+        },
+      };
+      
+      await saveWellnessPlan(firestore, user.uid, planToSave);
       toast({
         title: 'Plan saved!',
         description: 'Your wellness plan has been saved to your account.',
@@ -81,6 +102,7 @@ export function WellnessForm() {
         description: 'Failed to save plan. Please try again.',
         variant: 'destructive',
       });
+      throw error; // Re-throw to keep modal open on error
     }
   };
 
@@ -140,7 +162,11 @@ export function WellnessForm() {
                     <p className="text-muted-foreground whitespace-pre-wrap">{result.emotionalSupport}</p>
                   </div>
 
-                  <WellnessPlanView plan={result.personalizedPlan} onSave={handleSavePlan} />
+                  <WellnessPlanView 
+                    plan={result.personalizedPlan} 
+                    fullResult={result}
+                    onSave={handleSavePlan} 
+                  />
 
                   <div>
                     <h3 className="font-headline text-xl font-semibold mb-2">Additional Wellness Tips</h3>
@@ -154,6 +180,12 @@ export function WellnessForm() {
       </Card>
 
       <ConsentModal open={showConsent} onOpenChange={setShowConsent} onConsent={handleConsent} />
+      <SavePlanModal 
+        open={showSaveModal} 
+        onOpenChange={setShowSaveModal}
+        suggestedName={result?.personalizedPlan?.title || 'My Wellness Plan'}
+        onSave={handleSaveWithName}
+      />
     </>
   );
 }
