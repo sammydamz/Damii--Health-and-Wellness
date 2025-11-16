@@ -20,12 +20,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { useAuth } from '@/firebase';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect } from 'firebase/auth';
+import { useAuth, useFirestore } from '@/firebase';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
+import { useEffect } from 'react';
+import { createUserProfile } from '@/firebase/user-actions';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
@@ -55,6 +57,7 @@ const GoogleIcon = () => (
 
 export default function LoginPage() {
   const auth = useAuth();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -65,15 +68,37 @@ export default function LoginPage() {
       password: '',
     },
   });
+  
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then(async (userCredential) => {
+        if (userCredential) {
+          // This means the user has just been redirected back from Google
+          // We create a profile in case this is their first sign-in
+          await createUserProfile(firestore, userCredential.user, {
+            username: userCredential.user.displayName || 'Google User',
+          });
+          toast({
+            title: 'Login Successful',
+            description: 'Welcome!',
+          });
+          router.push('/dashboard');
+        }
+      })
+      .catch((error) => {
+        // Handle Errors here.
+        toast({
+          variant: 'destructive',
+          title: 'Sign In Failed',
+          description: error.message,
+        });
+      });
+  }, [auth, firestore, router, toast]);
 
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      // Using signInWithRedirect is better for mobile compatibility
       await signInWithRedirect(auth, provider);
-      // The redirect will cause the page to unload, so the code below might not execute
-      // until the user is redirected back. It's common to handle the result of the redirect
-      // in a useEffect on the main page or dashboard.
     } catch (error: any) {
       toast({
         variant: 'destructive',
