@@ -85,18 +85,18 @@ export default function LoginPage() {
   useEffect(() => {
     getRedirectResult(auth)
       .then(async (result) => {
-        if (result) {
-          // This is the first time the user is logging in with Google.
-          // Create a profile for them.
-          await createUserProfile(firestore, result.user, {
-            username: result.user.displayName || 'Google User',
-          });
-          toast({
-            title: 'Login Successful',
-            description: 'Welcome!',
-          });
-          // The other useEffect will handle the redirect now that the user object is available.
-        }
+        if (!result) return;
+        
+        // This is the first time the user is logging in with Google.
+        // Create a profile for them if they are new.
+        await createUserProfile(firestore, result.user, {
+          username: result.user.displayName || 'Google User',
+        });
+        toast({
+          title: 'Login Successful',
+          description: 'Welcome!',
+        });
+        // The other useEffect will handle the redirect now that the user object is available.
       })
       .catch((err) => {
         toast({
@@ -106,7 +106,7 @@ export default function LoginPage() {
         });
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth, firestore, toast]);
+  }, [auth]);
 
   const handleGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
@@ -130,8 +130,9 @@ export default function LoginPage() {
     }
   };
 
+  // Don't render the form while loading or if a user is already logged in
   if (isUserLoading || user) {
-    return null; // Don't render the form while loading or if user is already logged in
+    return null;
   }
 
   return (

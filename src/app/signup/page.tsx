@@ -99,16 +99,17 @@ export default function SignupPage() {
   useEffect(() => {
     getRedirectResult(auth)
       .then(async (result) => {
-        if (result) {
-          await createUserProfile(firestore, result.user, {
-            username: result.user.displayName || 'Google User',
-          });
-          toast({
-            title: 'Account Created',
-            description: 'Welcome!',
-          });
-          // The other useEffect will handle the redirect now that the user object is available.
-        }
+        if (!result) return;
+        
+        await createUserProfile(firestore, result.user, {
+          username: result.user.displayName || 'Google User',
+        });
+        
+        toast({
+          title: 'Account Created',
+          description: 'Welcome!',
+        });
+        // The other useEffect will handle the redirect now that the user object is available.
       })
       .catch((error) => {
         toast({
@@ -118,7 +119,7 @@ export default function SignupPage() {
         });
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth, firestore, toast]);
+  }, [auth]);
 
   // -------------------------
   // Form Setup
@@ -170,8 +171,9 @@ export default function SignupPage() {
     }
   };
   
+  // Don't render the form while loading or if a user is already logged in
   if (isUserLoading || user) {
-    return null; // Don't render the form while loading or if user is already logged in
+    return null;
   }
 
   // --------------------------------------------------
