@@ -1,55 +1,33 @@
-/**
- * @fileoverview Firestore Security Rules for the DAMII application.
- *
- * Core Philosophy:
- * This ruleset enforces a strict user-ownership model. Each user has sole access to their data stored under their unique user ID.
- *
- * Data Structure:
- * All user data is nested under `/users/{userId}`. Each user document contains account information, including a denormalized `id` field that must match the `userId` path segment.
- *
- * Key Security Decisions:
- * - Users can only read and write their own data.
- * - Listing all users is disallowed.
- *
- * Denormalization for Authorization:
- * The `id` field within each `UserAccount` document under `/users/{userId}` MUST match the `userId` path segment. This is enforced on creation and immutability is enforced on updates.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Enforces user-ownership for all operations on user account data.
-     * @path /users/{userId}
-     * @allow (create) User 'user_abc' can create their own account with matching ID: request.auth.uid == 'user_abc' and request.resource.data.id == 'user_abc'.
-     * @allow (get, update, delete) User 'user_abc' can read/write their own account: request.auth.uid == 'user_abc'.
-     * @deny (create) User 'user_xyz' cannot create an account for 'user_abc': request.auth.uid == 'user_xyz' but the path is /users/user_abc.
-     * @deny (get, update, delete) User 'user_xyz' cannot read/write 'user_abc's account: request.auth.uid == 'user_xyz' and the path is /users/user_abc.
-     * @principle Enforces document ownership for writes.
-     * @principle Validates relational integrity between the path and the document's `id` field.
-     */
+    // Helper function to check if the request is from an authenticated user accessing their own data
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // User account documents
     match /users/{userId} {
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
-      }
-
-      function isExistingOwner(userId) {
-          return isOwner(userId) && resource != null;
-      }
       allow get: if isOwner(userId);
-      allow list: if false; // Listing all users is not permitted.
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id; // Prevents changing the user ID.
-      allow delete: if isExistingOwner(userId);
+      allow list: if false; // Listing all users is not permitted
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
 
-      // Allow users to read/write their own mood logs
+      // User mood logs - allow full CRUD for authenticated user
       match /moodLogs/{logId} {
-        allow read, write: if isOwner(userId);
+        allow read, write, create, delete: if isOwner(userId);
       }
 
-      // Allow users to read/write their own chat history
+      // User chat history - allow full CRUD for authenticated user  
       match /chatHistory/{messageId} {
-        allow read, write: if isOwner(userId);
+        allow read, write, create, delete: if isOwner(userId);
+      }
+
+      // User wellness plans - allow full CRUD for authenticated user
+      match /plans/{planId} {
+        allow read, write, create, delete: if isOwner(userId);
       }
     }
   }

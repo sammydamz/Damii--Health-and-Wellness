@@ -7,12 +7,17 @@ import { z } from 'zod';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import {
-  analyzeWellnessInputAndProvideSupport,
-  type WellnessSupportOutput,
-} from '@/app/actions';
+import { analyzeWellnessInputAndGeneratePlan } from '@/app/actions';
+import type { WellnessPlanOutput } from '@/app/schemas/wellness-plan';
 import { BeatLoader } from 'react-spinners';
 import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
+import { ConsentModal } from '@/components/modals/consent-modal';
+import { WellnessPlanView } from '@/components/wellness/plan-view';
+import { useFirebase } from '@/firebase/provider';
+import { saveWellnessPlan } from '@/firebase/user-actions';
+import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
   userInput: z.string().min(10, {
@@ -22,7 +27,10 @@ const formSchema = z.object({
 
 export function WellnessForm() {
   const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState<WellnessSupportOutput | null>(null);
+  const [result, setResult] = useState<WellnessPlanOutput | null>(null);
+  const [showConsent, setShowConsent] = useState(false);
+  const { user, firestore } = useFirebase();
+  const { toast } = useToast();
 
   const {
     control,
@@ -39,62 +47,114 @@ export function WellnessForm() {
     setIsLoading(true);
     setResult(null);
     try {
-      const response = await analyzeWellnessInputAndProvideSupport(data.userInput);
+      const response = await analyzeWellnessInputAndGeneratePlan(data.userInput);
       setResult(response);
     } catch (error) {
       console.error('Error analyzing wellness input:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to generate wellness plan. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="font-headline">Wellness Check-in</CardTitle>
-        <CardDescription>
-          Tell us how you're feeling, and we'll provide some support and tips.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div className="space-y-2">
-            <Controller
-              name="userInput"
-              control={control}
-              render={({ field }) => (
-                <Textarea
-                  {...field}
-                  placeholder="e.g., I have low energy and feel anxious about my upcoming presentation..."
-                  className="min-h-[120px]"
-                />
-              )}
-            />
-            {errors.userInput && (
-              <p className="text-sm font-medium text-destructive">
-                {errors.userInput.message}
-              </p>
-            )}
-          </div>
-          <Button type="submit" disabled={isLoading} className="w-full">
-            {isLoading ? <BeatLoader size={8} color="white" /> : 'Get My Personalized Plan'}
-          </Button>
-        </form>
+  const handleSavePlan = () => {
+    setShowConsent(true);
+  };
 
-        {result && (
-          <div className="mt-8 space-y-6">
-            <Separator />
-            <div>
-              <h3 className="font-headline text-xl font-semibold">Emotional Support</h3>
-              <p className="mt-2 text-muted-foreground whitespace-pre-wrap">{result.emotionalSupport}</p>
+  const handleConsent = async () => {
+    if (!user || !result) return;
+
+    try {
+      await saveWellnessPlan(firestore, user.uid, result);
+      toast({
+        title: 'Plan saved!',
+        description: 'Your wellness plan has been saved to your account.',
+      });
+    } catch (error) {
+      console.error('Error saving plan:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save plan. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-headline">Wellness Check-in</CardTitle>
+          <CardDescription>
+            Tell us how you're feeling, and we'll create a personalized wellness plan for you.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <div className="space-y-2">
+              <Controller
+                name="userInput"
+                control={control}
+                render={({ field }) => (
+                  <Textarea
+                    {...field}
+                    placeholder="e.g., I have low energy and feel anxious about my upcoming presentation..."
+                    className="min-h-[120px]"
+                  />
+                )}
+              />
+              {errors.userInput && (
+                <p className="text-sm font-medium text-destructive">
+                  {errors.userInput.message}
+                </p>
+              )}
             </div>
-            <div>
-              <h3 className="font-headline text-xl font-semibold">Personalized Wellness Tips</h3>
-              <p className="mt-2 text-muted-foreground whitespace-pre-wrap">{result.wellnessTips}</p>
+            <Button type="submit" disabled={isLoading} className="w-full">
+              {isLoading ? <BeatLoader size={8} color="white" /> : 'Get My Personalized Plan'}
+            </Button>
+          </form>
+
+          {result && (
+            <div className="mt-8 space-y-6">
+              <Separator />
+
+              {result.safetyFlag ? (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="space-y-2">
+                    <p className="font-semibold">{result.emotionalSupport}</p>
+                    <p>{result.wellnessTips}</p>
+                    {result.safetyMessage && (
+                      <p className="text-sm mt-2">{result.safetyMessage}</p>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <>
+                  <div>
+                    <h3 className="font-headline text-xl font-semibold mb-2">Emotional Support</h3>
+                    <p className="text-muted-foreground whitespace-pre-wrap">{result.emotionalSupport}</p>
+                  </div>
+
+                  <WellnessPlanView plan={result.personalizedPlan} onSave={handleSavePlan} />
+
+                  <div>
+                    <h3 className="font-headline text-xl font-semibold mb-2">Additional Wellness Tips</h3>
+                    <p className="text-muted-foreground whitespace-pre-wrap">{result.wellnessTips}</p>
+                  </div>
+                </>
+              )}
             </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          )}
+        </CardContent>
+      </Card>
+
+      <ConsentModal open={showConsent} onOpenChange={setShowConsent} onConsent={handleConsent} />
+    </>
   );
 }
+

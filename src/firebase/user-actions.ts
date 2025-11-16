@@ -245,3 +245,101 @@ export async function getUserProfile(
   }
   return null;
 }
+
+/**
+ * Save a personalized wellness plan for a user
+ * @param firestore - Firestore instance
+ * @param userId - User ID
+ * @param plan - WellnessPlanOutput from the AI
+ */
+export async function saveWellnessPlan(
+  firestore: Firestore,
+  userId: string,
+  plan: any // Using any to avoid import issues - will be WellnessPlanOutput
+) {
+  const planRef = doc(
+    firestore,
+    `users/${userId}/plans/${plan.personalizedPlan.id}`
+  );
+
+  const planEntry = {
+    ...plan,
+    createdAt: Timestamp.now(),
+    savedAt: new Date().toISOString(),
+  };
+
+  return setDoc(planRef, planEntry, { merge: true }).catch(error => {
+    console.error('Error saving wellness plan:', error);
+    throw error;
+  });
+}
+
+/**
+ * Get all wellness plans for a user
+ * @param firestore - Firestore instance
+ * @param userId - User ID
+ * @param limitCount - Maximum number of plans to retrieve
+ */
+export async function getWellnessPlans(
+  firestore: Firestore,
+  userId: string,
+  limitCount: number = 50
+) {
+  const plansRef = collection(firestore, `users/${userId}/plans`);
+  
+  const q = query(
+    plansRef,
+    orderBy('createdAt', 'desc'),
+    limit(limitCount)
+  );
+
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+}
+
+/**
+ * Delete a wellness plan
+ * @param firestore - Firestore instance
+ * @param userId - User ID
+ * @param planId - Plan ID to delete
+ */
+export async function deleteWellnessPlan(
+  firestore: Firestore,
+  userId: string,
+  planId: string
+) {
+  const planRef = doc(firestore, `users/${userId}/plans/${planId}`);
+  
+  return deleteDoc(planRef).catch(error => {
+    console.error('Error deleting wellness plan:', error);
+    throw error;
+  });
+}
+
+/**
+ * Update wellness plan title (rename)
+ * @param firestore - Firestore instance
+ * @param userId - User ID
+ * @param planId - Plan ID to update
+ * @param newTitle - New title for the plan
+ */
+export async function updateWellnessPlanTitle(
+  firestore: Firestore,
+  userId: string,
+  planId: string,
+  newTitle: string
+) {
+  const planRef = doc(firestore, `users/${userId}/plans/${planId}`);
+  
+  return updateDoc(planRef, {
+    'personalizedPlan.title': newTitle,
+    updatedAt: new Date().toISOString(),
+  }).catch(error => {
+    console.error('Error updating wellness plan title:', error);
+    throw error;
+  });
+}
+
