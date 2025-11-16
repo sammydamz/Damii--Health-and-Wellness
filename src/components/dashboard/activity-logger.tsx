@@ -97,75 +97,78 @@ export function ActivityLogger({ logs, setLogs }: ActivityLoggerProps) {
           Select a date and record your mood and activities.
         </CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-8 md:grid-cols-3">
-        <div className="space-y-4">
-          <Label>Date</Label>
-          <Popover open={isCalendarOpen} onOpenChange={setCalendarOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant={'outline'}
-                className={cn(
-                  'w-full justify-start text-left font-normal',
-                  !date && 'text-muted-foreground'
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, 'PPP') : <span>Pick a date</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={(d) => {
-                  if (d) {
-                    setDate(d);
-                    setCalendarOpen(false);
-                  }
-                }}
-                disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        <div className="space-y-4">
-          <Label>Mood: {moodLabels[mood - 1]}</Label>
-          <Slider
-            value={[mood]}
-            onValueChange={(value) => setMood(value[0])}
-            min={1}
-            max={5}
-            step={1}
-            className="py-2"
-          />
-        </div>
-
-        <div className="space-y-4">
-          <Label>Activities</Label>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {activitiesList.map((activity) => (
-              <div key={activity.id} className="flex items-center space-x-2">
-                <Checkbox
-                  id={activity.id}
-                  checked={selectedActivities.includes(activity.id)}
-                  onCheckedChange={(checked) =>
-                    handleActivityChange(activity.id, !!checked)
-                  }
-                />
-                <label
-                  htmlFor={activity.id}
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+      <CardContent className="space-y-8">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+          <div className="space-y-4">
+            <Label>Date</Label>
+            <Popover open={isCalendarOpen} onOpenChange={setCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={'outline'}
+                  className={cn(
+                    'w-full justify-start text-left font-normal',
+                    !date && 'text-muted-foreground'
+                  )}
                 >
-                  {activity.label}
-                </label>
-              </div>
-            ))}
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {date ? format(date, 'PPP') : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={(d) => {
+                    if (d) {
+                      setDate(d);
+                      setCalendarOpen(false);
+                    }
+                  }}
+                  disabled={(date) =>
+                    date > new Date() || date < new Date('1900-01-01')
+                  }
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="space-y-4">
+            <Label>Mood: {moodLabels[mood - 1]}</Label>
+            <Slider
+              value={[mood]}
+              onValueChange={(value) => setMood(value[0])}
+              min={1}
+              max={5}
+              step={1}
+              className="py-2"
+            />
+          </div>
+
+          <div className="space-y-4">
+            <Label>Activities</Label>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {activitiesList.map((activity) => (
+                <div key={activity.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={activity.id}
+                    checked={selectedActivities.includes(activity.id)}
+                    onCheckedChange={(checked) =>
+                      handleActivityChange(activity.id, !!checked)
+                    }
+                  />
+                  <label
+                    htmlFor={activity.id}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    {activity.label}
+                  </label>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-
-        <div className="md:col-span-3 flex justify-end">
+        <div className="flex justify-end">
           <Button onClick={handleSave}>
             <Save className="mr-2 h-4 w-4" />
             Save Log
