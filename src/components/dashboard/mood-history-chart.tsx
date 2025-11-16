@@ -36,7 +36,7 @@ export function MoodHistoryChart({ logs }: MoodHistoryChartProps) {
   const chartConfig = {
     mood: {
       label: 'Mood',
-      color: 'hsl(var(--primary))',
+      color: 'var(--primary)',
     },
   };
 
