@@ -20,7 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { useAuth, useFirestore } from '@/firebase';
+import { useAuth, useFirestore, useUser } from '@/firebase';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -62,6 +62,7 @@ const GoogleIcon = () => (
 export default function SignupPage() {
   const auth = useAuth();
   const firestore = useFirestore();
+  const { user, isUserLoading } = useUser();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -76,6 +77,12 @@ export default function SignupPage() {
   });
 
   useEffect(() => {
+    if (!isUserLoading && user) {
+      router.replace('/dashboard');
+    }
+  }, [user, isUserLoading, router]);
+
+  useEffect(() => {
     getRedirectResult(auth)
       .then(async (userCredential) => {
         if (userCredential) {
@@ -87,7 +94,7 @@ export default function SignupPage() {
             title: 'Account Created',
             description: 'Welcome!',
           });
-          router.push('/dashboard');
+          // No need to router.push, the auth state observer will handle it
         }
       })
       .catch((error) => {
@@ -98,7 +105,7 @@ export default function SignupPage() {
           description: error.message,
         });
       });
-  }, [auth, firestore, router, toast]);
+  }, [auth, firestore, toast]);
 
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
@@ -122,7 +129,7 @@ export default function SignupPage() {
         title: 'Account Created',
         description: "You've successfully signed up!",
       });
-      router.push('/dashboard');
+      // No need to router.push, the auth state observer will handle it
     } catch (error: any) {
       toast({
         variant: 'destructive',
