@@ -27,6 +27,8 @@ import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
 } from 'firebase/auth';
 
 import { useAuth, useFirestore, useUser } from '@/firebase';
@@ -95,6 +97,48 @@ export default function SignupPage() {
     }
   }, [user, isUserLoading, router]);
 
+  // Handle redirect result for mobile browsers
+  useEffect(() => {
+    if (!auth) return;
+    
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (!result) return;
+        
+        console.log('Google redirect result:', result.user.email);
+        isSigningUp.current = true;
+        
+        try {
+          await createUserProfile(firestore, result.user, {
+            username: result.user.displayName || 'Google User',
+          });
+          console.log('User profile created successfully');
+          
+          toast({
+            title: 'Account Created',
+            description: 'Welcome!',
+          });
+          
+          router.push('/dashboard');
+        } catch (error: any) {
+          console.error('Failed to create profile:', error);
+          toast({
+            variant: 'destructive',
+            title: 'Failed to Create Profile',
+            description: error.message,
+          });
+        }
+      })
+      .catch((error) => {
+        console.error('Redirect result error:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Sign Up Failed',
+          description: error.message,
+        });
+      });
+  }, [auth, firestore, router, toast]);
+
 
 
   // -------------------------
@@ -114,24 +158,36 @@ export default function SignupPage() {
   // Google Sign-In Button
   // -------------------------
   const handleGoogleSignIn = async () => {
-    isSigningUp.current = true;
     const provider = new GoogleAuthProvider();
     
+    // Detect if user is on mobile
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
     try {
-      const result = await signInWithPopup(auth, provider);
-      console.log('Google sign-in result:', result.user.email);
-      
-      await createUserProfile(firestore, result.user, {
-        username: result.user.displayName || 'Google User',
-      });
-      console.log('User profile created successfully');
-      
-      toast({
-        title: 'Account Created',
-        description: 'Welcome!',
-      });
-      
-      router.push('/dashboard');
+      if (isMobile) {
+        // Use redirect on mobile (popups are blocked)
+        console.log('Using redirect flow for mobile');
+        isSigningUp.current = true;
+        await signInWithRedirect(auth, provider);
+      } else {
+        // Use popup on desktop
+        console.log('Using popup flow for desktop');
+        isSigningUp.current = true;
+        const result = await signInWithPopup(auth, provider);
+        console.log('Google sign-in result:', result.user.email);
+        
+        await createUserProfile(firestore, result.user, {
+          username: result.user.displayName || 'Google User',
+        });
+        console.log('User profile created successfully');
+        
+        toast({
+          title: 'Account Created',
+          description: 'Welcome!',
+        });
+        
+        router.push('/dashboard');
+      }
     } catch (error: any) {
       isSigningUp.current = false;
       console.error('Google sign-in error:', error);

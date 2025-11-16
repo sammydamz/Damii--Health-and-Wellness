@@ -29,6 +29,8 @@ import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
 } from 'firebase/auth';
 
 import { useAuth, useFirestore, useUser } from '@/firebase';
@@ -81,25 +83,79 @@ export default function LoginPage() {
     }
   }, [user, isUserLoading, router]);
 
+  // Handle redirect result for mobile browsers
+  useEffect(() => {
+    if (!auth) return;
+    
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (!result) return;
+        
+        console.log('Google redirect result:', result.user.email);
+        isLoggingIn.current = true;
+        
+        try {
+          await createUserProfile(firestore, result.user, {
+            username: result.user.displayName || 'Google User',
+          });
+          console.log('User profile created/updated successfully');
+          
+          toast({
+            title: 'Login Successful',
+            description: 'Welcome back!',
+          });
+          
+          router.push('/dashboard');
+        } catch (error: any) {
+          console.error('Failed to create/update profile:', error);
+          toast({
+            variant: 'destructive',
+            title: 'Login Failed',
+            description: error.message,
+          });
+        }
+      })
+      .catch((error) => {
+        console.error('Redirect result error:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Login Failed',
+          description: error.message,
+        });
+      });
+  }, [auth, firestore, router, toast]);
+
   const handleGoogleSignIn = async () => {
-    isLoggingIn.current = true;
     const provider = new GoogleAuthProvider();
     
+    // Detect if user is on mobile
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
     try {
-      const result = await signInWithPopup(auth, provider);
-      console.log('Google login result:', result.user.email);
-      
-      await createUserProfile(firestore, result.user, {
-        username: result.user.displayName || 'Google User',
-      });
-      console.log('User profile created/updated successfully');
-      
-      toast({
-        title: 'Login Successful',
-        description: 'Welcome back!',
-      });
-      
-      router.push('/dashboard');
+      if (isMobile) {
+        // Use redirect on mobile (popups are blocked)
+        console.log('Using redirect flow for mobile');
+        isLoggingIn.current = true;
+        await signInWithRedirect(auth, provider);
+      } else {
+        // Use popup on desktop
+        console.log('Using popup flow for desktop');
+        isLoggingIn.current = true;
+        const result = await signInWithPopup(auth, provider);
+        console.log('Google login result:', result.user.email);
+        
+        await createUserProfile(firestore, result.user, {
+          username: result.user.displayName || 'Google User',
+        });
+        console.log('User profile created/updated successfully');
+        
+        toast({
+          title: 'Login Successful',
+          description: 'Welcome back!',
+        });
+        
+        router.push('/dashboard');
+      }
     } catch (error: any) {
       isLoggingIn.current = false;
       console.error('Google login error:', error);
