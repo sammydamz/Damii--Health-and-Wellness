@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,6 +26,7 @@ import {
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
+  signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
 } from 'firebase/auth';
@@ -85,41 +86,60 @@ export default function SignupPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
+  const isSigningUp = useRef(false);
 
   // -------------------------
-  // Redirect Logged-In Users
+  // Redirect Logged-In Users (but not during active signup)
   // -------------------------
   useEffect(() => {
-    if (!isUserLoading && user) {
+    if (!isUserLoading && user && !isSigningUp.current) {
       router.replace('/dashboard');
     }
   }, [user, isUserLoading, router]);
 
-  // Handle the result from Google's redirect
+  // Handle redirect result for mobile browsers
   useEffect(() => {
+    if (!auth) return;
+    
     getRedirectResult(auth)
       .then(async (result) => {
         if (!result) return;
         
-        await createUserProfile(firestore, result.user, {
-          username: result.user.displayName || 'Google User',
-        });
+        console.log('Google redirect result:', result.user.email);
+        isSigningUp.current = true;
         
-        toast({
-          title: 'Account Created',
-          description: 'Welcome!',
-        });
-        // The other useEffect will handle the redirect now that the user object is available.
+        try {
+          await createUserProfile(firestore, result.user, {
+            username: result.user.displayName || 'Google User',
+          });
+          console.log('User profile created successfully');
+          
+          toast({
+            title: 'Account Created',
+            description: 'Welcome!',
+          });
+          
+          router.push('/dashboard');
+        } catch (error: any) {
+          console.error('Failed to create profile:', error);
+          toast({
+            variant: 'destructive',
+            title: 'Failed to Create Profile',
+            description: error.message,
+          });
+        }
       })
       .catch((error) => {
+        console.error('Redirect result error:', error);
         toast({
           variant: 'destructive',
           title: 'Sign Up Failed',
           description: error.message,
         });
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth]);
+  }, [auth, firestore, router, toast]);
+
+
 
   // -------------------------
   // Form Setup
@@ -139,13 +159,51 @@ export default function SignupPage() {
   // -------------------------
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
-    await signInWithRedirect(auth, provider);
+    
+    // Detect if user is on mobile
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    try {
+      if (isMobile) {
+        // Use redirect on mobile (popups are blocked)
+        console.log('Using redirect flow for mobile');
+        isSigningUp.current = true;
+        await signInWithRedirect(auth, provider);
+      } else {
+        // Use popup on desktop
+        console.log('Using popup flow for desktop');
+        isSigningUp.current = true;
+        const result = await signInWithPopup(auth, provider);
+        console.log('Google sign-in result:', result.user.email);
+        
+        await createUserProfile(firestore, result.user, {
+          username: result.user.displayName || 'Google User',
+        });
+        console.log('User profile created successfully');
+        
+        toast({
+          title: 'Account Created',
+          description: 'Welcome!',
+        });
+        
+        router.push('/dashboard');
+      }
+    } catch (error: any) {
+      isSigningUp.current = false;
+      console.error('Google sign-in error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Sign Up Failed',
+        description: error.message,
+      });
+    }
   };
 
   // -------------------------
   // Email Sign-Up Handler
   // -------------------------
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    isSigningUp.current = true;
     try {
       const result = await createUserWithEmailAndPassword(
         auth,
@@ -161,8 +219,10 @@ export default function SignupPage() {
         title: 'Account Created',
         description: "You've successfully signed up!",
       });
-      // The useEffect hook will handle redirecting to the dashboard
+      // Navigate immediately after successful email sign up
+      router.push('/dashboard');
     } catch (error: any) {
+      isSigningUp.current = false;
       toast({
         variant: 'destructive',
         title: 'Sign Up Failed',

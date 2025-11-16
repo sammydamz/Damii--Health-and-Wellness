@@ -23,6 +23,8 @@ import type { WellnessLog } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { CalendarIcon, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useFirestore, useUser } from '@/firebase';
+import { saveMoodLog } from '@/firebase/user-actions';
 
 const activitiesList = [
   { id: 'hydration', label: '8 glasses of water' },
@@ -47,7 +49,10 @@ export function ActivityLogger({ logs, setLogs }: ActivityLoggerProps) {
   const [mood, setMood] = useState<number>(3);
   const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
   const [isCalendarOpen, setCalendarOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
+  const firestore = useFirestore();
+  const { user } = useUser();
 
   useEffect(() => {
     const formattedDate = format(date, 'yyyy-MM-dd');
@@ -61,26 +66,56 @@ export function ActivityLogger({ logs, setLogs }: ActivityLoggerProps) {
     }
   }, [date, logs]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!user) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'You must be logged in to save logs.',
+      });
+      return;
+    }
+
+    setIsSaving(true);
     const formattedDate = format(date, 'yyyy-MM-dd');
-    const newLog: WellnessLog = {
-      date: formattedDate,
-      mood,
-      activities: selectedActivities,
-    };
+    
+    try {
+      // Save to Firestore
+      await saveMoodLog(firestore, user.uid, {
+        mood,
+        activities: selectedActivities,
+        date: formattedDate,
+      });
 
-    setLogs((prevLogs) => {
-      const otherLogs = prevLogs.filter((log) => log.date !== formattedDate);
-      const sortedLogs = [...otherLogs, newLog].sort(
-        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-      );
-      return sortedLogs;
-    });
+      // Update local state
+      const newLog: WellnessLog = {
+        date: formattedDate,
+        mood,
+        activities: selectedActivities,
+      };
 
-    toast({
-      title: 'Log Saved',
-      description: `Your entry for ${format(date, 'PPP')} has been saved.`,
-    });
+      setLogs((prevLogs) => {
+        const otherLogs = prevLogs.filter((log) => log.date !== formattedDate);
+        const sortedLogs = [...otherLogs, newLog].sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
+        return sortedLogs;
+      });
+
+      toast({
+        title: 'Log Saved',
+        description: `Your entry for ${format(date, 'PPP')} has been saved to the database.`,
+      });
+    } catch (error) {
+      console.error('Error saving log:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Save Failed',
+        description: 'Failed to save your log. Please try again.',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleActivityChange = (activityId: string, checked: boolean) => {
@@ -169,9 +204,9 @@ export function ActivityLogger({ logs, setLogs }: ActivityLoggerProps) {
           </div>
         </div>
         <div className="flex justify-end">
-          <Button onClick={handleSave}>
+          <Button onClick={handleSave} disabled={isSaving}>
             <Save className="mr-2 h-4 w-4" />
-            Save Log
+            {isSaving ? 'Saving...' : 'Save Log'}
           </Button>
         </div>
       </CardContent>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -28,6 +28,7 @@ import {
 import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
+  signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
 } from 'firebase/auth';
@@ -68,60 +69,116 @@ export default function LoginPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { user, isUserLoading } = useUser();
+  const isLoggingIn = useRef(false);
 
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: { email: '', password: '' },
   });
 
-  // If user is logged in, redirect to dashboard
+  // If user is logged in, redirect to dashboard (but not during active login)
   useEffect(() => {
-    if (!isUserLoading && user) {
+    if (!isUserLoading && user && !isLoggingIn.current) {
       router.replace('/dashboard');
     }
   }, [user, isUserLoading, router]);
 
-  // Handle the result from Google's redirect
+  // Handle redirect result for mobile browsers
   useEffect(() => {
+    if (!auth) return;
+    
     getRedirectResult(auth)
       .then(async (result) => {
         if (!result) return;
         
-        // This is the first time the user is logging in with Google.
-        // Create a profile for them if they are new.
+        console.log('Google redirect result:', result.user.email);
+        isLoggingIn.current = true;
+        
+        try {
+          await createUserProfile(firestore, result.user, {
+            username: result.user.displayName || 'Google User',
+          });
+          console.log('User profile created/updated successfully');
+          
+          toast({
+            title: 'Login Successful',
+            description: 'Welcome back!',
+          });
+          
+          router.push('/dashboard');
+        } catch (error: any) {
+          console.error('Failed to create/update profile:', error);
+          toast({
+            variant: 'destructive',
+            title: 'Login Failed',
+            description: error.message,
+          });
+        }
+      })
+      .catch((error) => {
+        console.error('Redirect result error:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Login Failed',
+          description: error.message,
+        });
+      });
+  }, [auth, firestore, router, toast]);
+
+  const handleGoogleSignIn = async () => {
+    const provider = new GoogleAuthProvider();
+    
+    // Detect if user is on mobile
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    try {
+      if (isMobile) {
+        // Use redirect on mobile (popups are blocked)
+        console.log('Using redirect flow for mobile');
+        isLoggingIn.current = true;
+        await signInWithRedirect(auth, provider);
+      } else {
+        // Use popup on desktop
+        console.log('Using popup flow for desktop');
+        isLoggingIn.current = true;
+        const result = await signInWithPopup(auth, provider);
+        console.log('Google login result:', result.user.email);
+        
         await createUserProfile(firestore, result.user, {
           username: result.user.displayName || 'Google User',
         });
+        console.log('User profile created/updated successfully');
+        
         toast({
           title: 'Login Successful',
-          description: 'Welcome!',
+          description: 'Welcome back!',
         });
-        // The other useEffect will handle the redirect now that the user object is available.
-      })
-      .catch((err) => {
-        toast({
-          variant: 'destructive',
-          title: 'Google Login Error',
-          description: err.message,
-        });
+        
+        router.push('/dashboard');
+      }
+    } catch (error: any) {
+      isLoggingIn.current = false;
+      console.error('Google login error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Login Failed',
+        description: error.message,
       });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth]);
-
-  const handleGoogleLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    await signInWithRedirect(auth, provider);
+    }
   };
 
   const onSubmit = async (values: any) => {
+    isLoggingIn.current = true;
     try {
       await signInWithEmailAndPassword(auth, values.email, values.password);
       toast({
         title: 'Login Successful',
         description: 'Welcome back!',
       });
-      // The useEffect hook will handle redirecting to the dashboard
+      // Navigate immediately; dashboard will handle rendering after auth settles
+      router.push('/dashboard');
     } catch (err: any) {
+      isLoggingIn.current = false;
       toast({
         variant: 'destructive',
         title: 'Login Failed',
@@ -147,7 +204,7 @@ export default function LoginPage() {
 
         <CardContent>
           <div className="space-y-4">
-            <Button variant="outline" className="w-full" onClick={handleGoogleLogin}>
+            <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
               <GoogleIcon />
               Sign in with Google
             </Button>
