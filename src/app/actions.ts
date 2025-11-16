@@ -2,9 +2,8 @@
 
 import { z } from 'genkit';
 import { ai } from '@/ai/genkit';
+import { googleAI } from '@genkit-ai/google-genai';
 import type { Message } from '@/lib/types';
-
-// Combined Wellness Flow
 const WellnessSupportOutputSchema = z.object({
   emotionalSupport: z
     .string()
@@ -35,7 +34,7 @@ export async function analyzeWellnessInputAndProvideSupport(
   `;
 
   const { output } = await ai.generate({
-    model: 'gemini-1.5-flash',
+    model: googleAI.model('gemini-1.5-flash'),
     prompt,
     output: { schema: WellnessSupportOutputSchema },
   });
@@ -60,7 +59,7 @@ export async function getChatResponse(messages: Message[]): Promise<string> {
   const lastMessage = messages[messages.length - 1];
 
   const { text } = await ai.generate({
-    model: 'gemini-1.5-flash',
+    model: googleAI.model('gemini-1.5-flash'),
     prompt: lastMessage.content,
     history,
     config: {
@@ -75,148 +74,229 @@ export async function getChatResponse(messages: Message[]): Promise<string> {
 import { WellnessPlanSchema, type WellnessPlanOutput } from '@/app/schemas/wellness-plan';
 
 export async function analyzeWellnessInputAndGeneratePlan(userInput: string): Promise<WellnessPlanOutput> {
-  // 1) Quick sanitize / PII removal
-  const sanitized = userInput.replace(/\b\S+@\S+\.\S+\b/g, '[email]');
+  // 1) Enhanced PII sanitization
+  let sanitized = userInput
+    .replace(/\b\S+@\S+\.\S+\b/g, '[email]')                    // Email addresses
+    .replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, '[phone]')       // Phone numbers (US format)
+    .replace(/\b\d{3}-\d{2}-\d{4}\b/g, '[ssn]')                 // SSN
+    .replace(/\b\d{16}\b/g, '[credit-card]');                   // Credit card (basic)
 
-  // 2) Quick safety regex check
-  const safetyRegex = /\b(suicid|kill myself|hurt myself|end my life|self harm|cut myself)\b/i;
-  if (safetyRegex.test(sanitized)) {
+  // Limit input length for safety
+  if (sanitized.length > 2000) {
+    sanitized = sanitized.substring(0, 2000) + '... [truncated for length]';
+  }
+
+  // 2) Multi-layer safety check
+  const criticalKeywords = /\b(suicid(e|al)|kill myself|hurt myself|end my life|self[- ]harm|cut myself|want to die|overdose|no reason to live)\b/i;
+  const concerningKeywords = /\b(hopeless|worthless|can'?t go on|unbearable|severe depression|crisis|emergency)\b/i;
+  
+  const isCritical = criticalKeywords.test(sanitized);
+  const isConcerning = concerningKeywords.test(sanitized);
+
+  if (isCritical) {
+    // Immediate crisis response
     return {
-      emotionalSupport: 'I\'m sorry you\'re feeling this way. If you are in immediate danger, please contact local emergency services or a crisis hotline immediately.',
-      wellnessTips: 'National Suicide Prevention Lifeline: 988 (US) or visit https://988lifeline.org/',
+      emotionalSupport: 'I\'m truly sorry you\'re experiencing these thoughts. Your safety is the most important thing right now. Please reach out to immediate professional support.',
+      wellnessTips: 'Crisis resources: National Suicide Prevention Lifeline (988) available 24/7, Crisis Text Line (text HOME to 741741), or call 911 if in immediate danger. You are not alone, and help is available.',
       personalizedPlan: {
-        id: `safety-redirect-${Date.now()}`,
-        title: 'Immediate Support Needed',
-        overview: 'We detected language that may indicate you\'re in crisis. Your safety is the top priority.',
+        id: `crisis-support-${Date.now()}`,
+        title: 'Immediate Crisis Support Resources',
+        overview: 'We detected language indicating you may be in crisis. Your safety is the absolute priority. Please contact one of these resources immediately.',
         summaryBullets: [
-          'Contact emergency services (911) if you\'re in immediate danger',
-          'Call the National Suicide Prevention Lifeline: 988',
-          'Reach out to a trusted friend, family member, or mental health professional',
+          'Call 988 (National Suicide Prevention Lifeline) - free, confidential, 24/7',
+          'Text HOME to 741741 (Crisis Text Line) for immediate text support',
+          'Call 911 or go to your nearest emergency room if in immediate danger',
+          'Reach out to a trusted friend, family member, or mental health professional right now'
         ],
         steps: [
           {
             id: '1',
-            text: 'Call 988 or your local emergency number',
+            text: 'Call 988 now for immediate support',
             category: 'other',
             priority: 'high',
             when: 'immediately',
+            safety: 'If you are in immediate danger, call 911 instead'
+          },
+          {
+            id: '2',
+            text: 'Remove access to any means of self-harm if possible',
+            category: 'other',
+            priority: 'high',
+            when: 'immediately',
+            safety: 'Ask a trusted person for help if needed'
+          },
+          {
+            id: '3',
+            text: 'Stay with someone or in a safe public place until help arrives',
+            category: 'social',
+            priority: 'high',
+            when: 'immediately'
           }
         ],
         estimatedEffort: 'low',
         timeframe: 'immediate'
       },
       safetyFlag: true,
-      safetyMessage: 'Detected language that may indicate imminent risk. Crisis resources provided.'
+      safetyMessage: 'CRITICAL: Detected language indicating potential self-harm or suicide risk. Crisis intervention resources provided. If this is an error, please rephrase your input.'
     } as WellnessPlanOutput;
   }
 
-  // 3) Build a detailed prompt for structured plan generation
-  const prompt = `You are DAMII, a compassionate and non-diagnostic wellness assistant. Based on the user's check-in below, generate a personalized wellness plan in JSON format that strictly matches the provided schema.
+  if (isConcerning) {
+    // Add safety context to prompt for model awareness
+    sanitized = `[SAFETY NOTE: User input contains concerning language. Please provide gentle, supportive guidance and encourage professional mental health support if appropriate.]\n\n${sanitized}`;
+  }
 
+  // 3) Build a comprehensive, personalized prompt
+  const prompt = `# ROLE
+You are DAMII, a compassionate wellness assistant designed to create personalized, actionable wellness plans. You are NOT a medical professional and do not diagnose or prescribe.
+
+# USER CONTEXT
 User Input: "${sanitized}"
 
-Requirements:
-- Provide empathetic emotional support (2-3 sentences)
-- Offer evidence-based wellness tips (hydration, sleep, movement, nutrition)
-- Create a personalized plan with:
-  - A clear title and overview
-  - 3-6 summary bullets highlighting key actions
-  - 3-8 actionable steps (each ≤120 chars), categorized by type
-  - Estimated effort level (low/medium/high)
-  - Realistic timeframe (e.g., "1 week", "2 weeks")
-- Keep steps micro-action focused and achievable
-- If you detect any red flags (self-harm, severe depression), set safetyFlag to true and provide crisis resources in safetyMessage
+# TASK
+Create a PERSONALIZED wellness plan that:
+1. **Directly addresses their specific concerns** mentioned in their input
+2. **Reflects their emotional state** with genuine empathy
+3. **Provides tailored steps** fitting their life context (work stress → desk exercises; parent → quick 5-min activities)
+4. **Uses their language/themes** (if they say "burnt out", acknowledge that term)
+5. **Sets realistic expectations** based on their apparent capacity
+6. **Includes 4-8 micro-actions** (each ≤120 chars, doable in 5-30 mins)
+7. **Balances wellness dimensions** (movement, sleep, hydration, breathing, nutrition, social, cognitive)
 
-Output ONLY valid JSON matching this schema:
+# PERSONALIZATION RULES
+- Work/job stress → include desk-friendly or lunch-break activities
+- Family/kids → brief activities fitting parenting schedules  
+- Anxiety → prioritize breathing exercises and grounding techniques
+- Low mood → include social connection and sunlight exposure
+- Physical symptoms (headaches, fatigue) → focus on hydration, sleep, gentle movement
+- Overwhelmed → LOW effort, SHORT timeframe (3-7 days)
+- Motivated tone → MEDIUM effort, longer timeframe (2-4 weeks)
+
+# SAFETY DETECTION
+If input contains self-harm, suicide, severe depression, or crisis language:
+- Set "safetyFlag": true
+- Provide crisis resources in "safetyMessage" (e.g., "988 Lifeline")
+- Keep plan very gentle, encourage professional support
+
+# EXAMPLES
+
+## Example 1: Work Stress & Sleep
+Input: "I'm so stressed from work deadlines and can't sleep at night. I feel exhausted all day."
 {
-  "emotionalSupport": "string",
-  "wellnessTips": "string",
+  "emotionalSupport": "It sounds like work pressure is taking a real toll on your sleep and energy. That cycle of stress and exhaustion is tough, but small changes can help break it.",
+  "wellnessTips": "Prioritize a wind-down routine 1 hour before bed—no screens, try deep breathing or reading. Stay hydrated during the day, and consider a 15-minute walk at lunch to regulate stress hormones.",
   "personalizedPlan": {
-    "id": "string (generate unique ID)",
-    "title": "string",
-    "overview": "string",
-    "summaryBullets": ["string"],
-    "steps": [{
-      "id": "string",
-      "text": "string",
-      "category": "movement|sleep|hydration|nutrition|social|breathing|cognitive|other",
-      "durationMinutes": number (optional),
-      "frequency": "string (optional)",
-      "priority": "low|medium|high (optional)",
-      "when": "string (optional)",
-      "safety": "string (optional)",
-      "followUpQuestion": "string (optional)"
-    }],
-    "estimatedEffort": "low|medium|high",
-    "timeframe": "string"
-  },
-  "safetyFlag": boolean (optional),
-  "safetyMessage": "string (optional)"
-}`;
+    "id": "plan-${Date.now()}",
+    "title": "Stress Relief & Sleep Reset Plan",
+    "overview": "A 2-week plan to reduce work-related stress and improve sleep quality through relaxation techniques, boundary-setting, and sleep hygiene adjustments.",
+    "summaryBullets": [
+      "Establish a consistent bedtime routine to signal your body it's time to rest",
+      "Practice 5-minute breathing exercises when work stress peaks",
+      "Limit caffeine after 2 PM to support better sleep",
+      "Take short movement breaks to reduce physical tension from desk work"
+    ],
+    "steps": [
+      {"id": "1", "text": "Set a daily alarm for bedtime routine (9:30 PM)", "category": "sleep", "durationMinutes": 5, "frequency": "daily", "priority": "high", "when": "evening"},
+      {"id": "2", "text": "Practice 4-7-8 breathing when feeling overwhelmed", "category": "breathing", "durationMinutes": 5, "frequency": "as needed", "priority": "high", "when": "during work stress"},
+      {"id": "3", "text": "Switch to herbal tea after lunch", "category": "nutrition", "priority": "medium", "when": "afternoon"},
+      {"id": "4", "text": "Take a 10-minute walk at lunch break", "category": "movement", "durationMinutes": 10, "frequency": "weekdays", "priority": "medium", "when": "midday"},
+      {"id": "5", "text": "Dim lights and avoid screens 1 hour before bed", "category": "sleep", "durationMinutes": 60, "frequency": "daily", "priority": "high", "when": "evening"}
+    ],
+    "estimatedEffort": "medium",
+    "timeframe": "2 weeks"
+  }
+}
 
-  // 4) Call genkit AI
+## Example 2: Low Energy & Poor Nutrition
+Input: "I've been feeling really low energy and just eating junk food. I know I need to change but I'm too tired to cook."
+{
+  "emotionalSupport": "Low energy and quick food choices often feed into each other—it's a common cycle. You're already aware you want to make changes, which is the first step. Let's start with small, energy-friendly adjustments.",
+  "wellnessTips": "Focus on hydration first (even mild dehydration zaps energy). Try simple, no-cook nutritious options like Greek yogurt with berries, hummus with veggies, or pre-cut fruit. Short walks can actually boost energy more than caffeine.",
+  "personalizedPlan": {
+    "id": "plan-${Date.now()}",
+    "title": "Energy Boost Through Simple Nutrition",
+    "overview": "A 1-week starter plan to increase energy levels through easy nutrition swaps, hydration, and gentle movement—no complicated cooking required.",
+    "summaryBullets": [
+      "Start each day with a glass of water to combat dehydration-related fatigue",
+      "Stock up on grab-and-go nutritious snacks (nuts, fruit, yogurt)",
+      "Add one 10-minute walk daily to naturally increase energy",
+      "Swap one processed meal per day for a simple whole-food option"
+    ],
+    "steps": [
+      {"id": "1", "text": "Drink a full glass of water first thing in the morning", "category": "hydration", "durationMinutes": 2, "frequency": "daily", "priority": "high", "when": "morning"},
+      {"id": "2", "text": "Prep 3 grab-and-go snacks each evening (e.g., apple + almonds)", "category": "nutrition", "durationMinutes": 10, "frequency": "daily", "priority": "high", "when": "evening"},
+      {"id": "3", "text": "Take a 10-minute walk after waking up or during lunch", "category": "movement", "durationMinutes": 10, "frequency": "daily", "priority": "medium", "when": "morning or midday"},
+      {"id": "4", "text": "Replace one processed snack with whole food (banana, carrots, etc.)", "category": "nutrition", "frequency": "daily", "priority": "medium", "when": "snack time"},
+      {"id": "5", "text": "Aim for 6-8 glasses of water throughout the day", "category": "hydration", "frequency": "daily", "priority": "high", "when": "all day"}
+    ],
+    "estimatedEffort": "low",
+    "timeframe": "1 week"
+  }
+}
+
+# OUTPUT FORMAT
+Return ONLY valid JSON matching the WellnessPlanOutput schema. No markdown formatting, no explanatory text—just pure JSON.
+
+Generate the personalized plan now:`;
+
+  // 4) Call Genkit AI with optimized config
   try {
     const { output } = await ai.generate({
-      model: 'gemini-2.5-flash',
+      model: googleAI.model('gemini-2.5-flash'),
       prompt,
-      output: { schema: WellnessPlanSchema }
+      output: { schema: WellnessPlanSchema },
+      config: {
+        temperature: 0.7,  // Balance creativity with consistency
+        topP: 0.9,
+        topK: 40,
+      }
     });
 
-    // 5) Validate and return
+    if (!output) {
+      throw new Error('No output generated from model');
+    }
+
+    // 5) Return validated output
     return output as WellnessPlanOutput;
   } catch (error) {
-    console.error('AI call failed, attempting retry', error);
+    console.error('[analyzeWellnessInputAndGeneratePlan] Initial generation failed:', error);
     
-    // Retry with simpler prompt
+    // Retry with simplified prompt emphasizing JSON-only output
     try {
-      const retryPrompt = prompt + '\n\nIMPORTANT: Return ONLY valid JSON. Do not include any explanatory text before or after the JSON.';
+      const retryPrompt = prompt + '\n\nCRITICAL: You MUST return ONLY valid JSON. Do not wrap in markdown code blocks. Do not add any text before or after the JSON object.';
+      
       const { text } = await ai.generate({ 
-        model: 'gemini-2.5-flash', 
-        prompt: retryPrompt 
+        model: googleAI.model('gemini-2.5-flash'), 
+        prompt: retryPrompt,
+        config: {
+          temperature: 0.5,  // Lower temperature for more predictable output
+          topP: 0.8,
+        }
       });
       
-      const parsed = JSON.parse(text || '{}');
-      return WellnessPlanSchema.parse(parsed);
-    } catch (retryError) {
-      console.error('Failed to parse AI response on retry', retryError);
+      if (!text) {
+        throw new Error('No text output from retry');
+      }
+
+      // Try to extract JSON if wrapped in markdown
+      let cleanedText = text.trim();
+      if (cleanedText.startsWith('```json')) {
+        cleanedText = cleanedText.replace(/^```json\n/, '').replace(/\n```$/, '');
+      } else if (cleanedText.startsWith('```')) {
+        cleanedText = cleanedText.replace(/^```\n/, '').replace(/\n```$/, '');
+      }
       
-      // Fallback safe response
-      return {
-        emotionalSupport: 'Thank you for sharing. I\'m here to support you on your wellness journey.',
-        wellnessTips: 'Consider staying hydrated, getting adequate sleep, and moving your body regularly.',
-        personalizedPlan: {
-          id: `fallback-${Date.now()}`,
-          title: 'Basic Wellness Plan',
-          overview: 'A simple plan to get started with self-care.',
-          summaryBullets: [
-            'Drink 8 glasses of water daily',
-            'Aim for 7-9 hours of sleep',
-            'Take short walks throughout the day'
-          ],
-          steps: [
-            {
-              id: '1',
-              text: 'Drink a glass of water when you wake up',
-              category: 'hydration',
-              durationMinutes: 5,
-              priority: 'medium',
-              when: 'morning'
-            },
-            {
-              id: '2',
-              text: 'Take a 10-minute walk',
-              category: 'movement',
-              durationMinutes: 10,
-              frequency: 'daily',
-              priority: 'medium'
-            }
-          ],
-          estimatedEffort: 'low',
-          timeframe: '1 week'
-        },
-        safetyFlag: false,
-        safetyMessage: null
-      } as WellnessPlanOutput;
+      const parsed = JSON.parse(cleanedText);
+      const validated = WellnessPlanSchema.parse(parsed);
+      
+      console.log('[analyzeWellnessInputAndGeneratePlan] Retry successful after JSON cleanup');
+      return validated;
+    } catch (retryError) {
+      console.error('[analyzeWellnessInputAndGeneratePlan] Retry also failed:', retryError);
+      
+      // Throw error instead of returning fake fallback
+      // Let the UI handle showing user-friendly error message
+      throw new Error('Unable to generate wellness plan at this time. Please try again in a moment.');
     }
   }
 }

@@ -10,11 +10,14 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronUp, Save } from 'lucide-react';
+import { ChevronDown, ChevronUp, Save, Copy, FileDown, FileText } from 'lucide-react';
 import type { WellnessPlanOutput, PlanStep } from '@/app/schemas/wellness-plan';
+import { copyToClipboard, exportToPDF, exportToDOCX } from '@/lib/export-utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface PlanViewProps {
   plan: WellnessPlanOutput['personalizedPlan'];
+  fullResult: WellnessPlanOutput;
   onSave: () => void;
 }
 
@@ -35,9 +38,10 @@ const priorityColors = {
   high: 'bg-red-500/10 text-red-700 dark:text-red-400',
 };
 
-export function WellnessPlanView({ plan, onSave }: PlanViewProps) {
+export function WellnessPlanView({ plan, fullResult, onSave }: PlanViewProps) {
   const [isOpen, setIsOpen] = useState(true);
   const [checkedSteps, setCheckedSteps] = useState<Set<string>>(new Set());
+  const { toast } = useToast();
 
   const toggleStep = (stepId: string) => {
     setCheckedSteps((prev) => {
@@ -49,6 +53,54 @@ export function WellnessPlanView({ plan, onSave }: PlanViewProps) {
       }
       return next;
     });
+  };
+
+  const handleCopy = async () => {
+    try {
+      await copyToClipboard(fullResult);
+      toast({
+        title: 'Copied!',
+        description: 'Plan copied to clipboard as plain text',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to copy plan',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleExportPDF = () => {
+    try {
+      exportToPDF(fullResult);
+      toast({
+        title: 'Downloaded!',
+        description: 'Plan exported as PDF',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to export PDF',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleExportDOCX = async () => {
+    try {
+      await exportToDOCX(fullResult);
+      toast({
+        title: 'Downloaded!',
+        description: 'Plan exported as DOCX',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to export DOCX',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -148,10 +200,26 @@ export function WellnessPlanView({ plan, onSave }: PlanViewProps) {
           </CollapsibleContent>
         </Collapsible>
 
-        <Button onClick={onSave} className="w-full" size="lg">
-          <Save className="h-4 w-4 mr-2" />
-          Save This Plan
-        </Button>
+        <div className="space-y-3">
+          <div className="grid grid-cols-3 gap-2">
+            <Button onClick={handleCopy} variant="outline" size="sm">
+              <Copy className="h-4 w-4 mr-2" />
+              Copy Text
+            </Button>
+            <Button onClick={handleExportPDF} variant="outline" size="sm">
+              <FileDown className="h-4 w-4 mr-2" />
+              PDF
+            </Button>
+            <Button onClick={handleExportDOCX} variant="outline" size="sm">
+              <FileText className="h-4 w-4 mr-2" />
+              DOCX
+            </Button>
+          </div>
+          <Button onClick={onSave} className="w-full" size="lg">
+            <Save className="h-4 w-4 mr-2" />
+            Save This Plan
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
