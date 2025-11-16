@@ -24,6 +24,11 @@ service cloud.firestore {
       match /chatHistory/{messageId} {
         allow read, write, create, delete: if isOwner(userId);
       }
+
+      // User wellness plans - allow full CRUD for authenticated user
+      match /plans/{planId} {
+        allow read, write, create, delete: if isOwner(userId);
+      }
     }
   }
 }

@@ -245,3 +245,32 @@ export async function getUserProfile(
   }
   return null;
 }
+
+/**
+ * Save a personalized wellness plan for a user
+ * @param firestore - Firestore instance
+ * @param userId - User ID
+ * @param plan - WellnessPlanOutput from the AI
+ */
+export async function saveWellnessPlan(
+  firestore: Firestore,
+  userId: string,
+  plan: any // Using any to avoid import issues - will be WellnessPlanOutput
+) {
+  const planRef = doc(
+    firestore,
+    `users/${userId}/plans/${plan.personalizedPlan.id}`
+  );
+
+  const planEntry = {
+    ...plan,
+    createdAt: Timestamp.now(),
+    savedAt: new Date().toISOString(),
+  };
+
+  return setDoc(planRef, planEntry, { merge: true }).catch(error => {
+    console.error('Error saving wellness plan:', error);
+    throw error;
+  });
+}
+
