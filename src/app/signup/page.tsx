@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,8 +26,7 @@ import {
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
 } from 'firebase/auth';
 
 import { useAuth, useFirestore, useUser } from '@/firebase';
@@ -85,42 +84,18 @@ export default function SignupPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
+  const isSigningUp = useRef(false);
 
   // -------------------------
-  // Redirect Logged-In Users
+  // Redirect Logged-In Users (but not during active signup)
   // -------------------------
   useEffect(() => {
-    if (!isUserLoading && user) {
+    if (!isUserLoading && user && !isSigningUp.current) {
       router.replace('/dashboard');
     }
   }, [user, isUserLoading, router]);
 
-  // Handle the result from Google's redirect
-  useEffect(() => {
-    getRedirectResult(auth)
-      .then(async (result) => {
-        if (!result) return;
-        
-        await createUserProfile(firestore, result.user, {
-          username: result.user.displayName || 'Google User',
-        });
-        
-        toast({
-          title: 'Account Created',
-          description: 'Welcome!',
-        });
-        // Navigate immediately after Google redirect success
-        router.replace('/dashboard');
-      })
-      .catch((error) => {
-        toast({
-          variant: 'destructive',
-          title: 'Sign Up Failed',
-          description: error.message,
-        });
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth]);
+
 
   // -------------------------
   // Form Setup
@@ -139,14 +114,40 @@ export default function SignupPage() {
   // Google Sign-In Button
   // -------------------------
   const handleGoogleSignIn = async () => {
+    isSigningUp.current = true;
     const provider = new GoogleAuthProvider();
-    await signInWithRedirect(auth, provider);
+    
+    try {
+      const result = await signInWithPopup(auth, provider);
+      console.log('Google sign-in result:', result.user.email);
+      
+      await createUserProfile(firestore, result.user, {
+        username: result.user.displayName || 'Google User',
+      });
+      console.log('User profile created successfully');
+      
+      toast({
+        title: 'Account Created',
+        description: 'Welcome!',
+      });
+      
+      router.push('/dashboard');
+    } catch (error: any) {
+      isSigningUp.current = false;
+      console.error('Google sign-in error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Sign Up Failed',
+        description: error.message,
+      });
+    }
   };
 
   // -------------------------
   // Email Sign-Up Handler
   // -------------------------
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    isSigningUp.current = true;
     try {
       const result = await createUserWithEmailAndPassword(
         auth,
@@ -163,8 +164,9 @@ export default function SignupPage() {
         description: "You've successfully signed up!",
       });
       // Navigate immediately after successful email sign up
-      router.replace('/dashboard');
+      router.push('/dashboard');
     } catch (error: any) {
+      isSigningUp.current = false;
       toast({
         variant: 'destructive',
         title: 'Sign Up Failed',
