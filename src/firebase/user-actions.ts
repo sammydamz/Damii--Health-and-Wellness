@@ -73,16 +73,40 @@ export async function saveMoodLog(
 ) {
   const moodLogRef = collection(firestore, `users/${userId}/moodLogs`);
   
-  const logEntry = {
-    ...moodData,
-    timestamp: Timestamp.now(),
-    createdAt: new Date().toISOString(),
-  };
-
-  return addDoc(moodLogRef, logEntry).catch(error => {
+  // Check if a log for this date already exists
+  const q = query(
+    moodLogRef,
+    where('date', '==', moodData.date),
+    limit(1)
+  );
+  
+  try {
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      // Update existing log
+      const existingDoc = querySnapshot.docs[0];
+      const logEntry = {
+        ...moodData,
+        timestamp: Timestamp.now(),
+        updatedAt: new Date().toISOString(),
+      };
+      
+      return updateDoc(doc(firestore, `users/${userId}/moodLogs/${existingDoc.id}`), logEntry);
+    } else {
+      // Create new log
+      const logEntry = {
+        ...moodData,
+        timestamp: Timestamp.now(),
+        createdAt: new Date().toISOString(),
+      };
+      
+      return addDoc(moodLogRef, logEntry);
+    }
+  } catch (error) {
     console.error('Error saving mood log:', error);
     throw error;
-  });
+  }
 }
 
 /**
