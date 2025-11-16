@@ -67,7 +67,7 @@ export function ChatMessages({
             </AvatarFallback>
           </Avatar>
           <div className="rounded-xl bg-card px-4 py-3 shadow">
-            <BeatLoader size={8} color="hsl(var(--primary))" />
+            <BeatLoader size={8} color="var(--primary)" />
           </div>
         </div>
       )}

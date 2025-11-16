@@ -1,21 +1,23 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import useLocalStorage from '@/hooks/use-local-storage';
 import type { WellnessLog } from '@/lib/types';
 import { ActivityLogger } from '@/components/dashboard/activity-logger';
 import { MoodHistoryChart } from '@/components/dashboard/mood-history-chart';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useUser, useAuth } from '@/firebase';
+import { useUser, useAuth, useFirestore } from '@/firebase';
 import { useRouter } from 'next/navigation';
+import { getMoodLogs } from '@/firebase/user-actions';
 
 export default function DashboardPage() {
-  const [logs, setLogs] = useLocalStorage<WellnessLog[]>('wellness-logs', []);
+  const [logs, setLogs] = useState<WellnessLog[]>([]);
   const [isClient, setIsClient] = useState(false);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(true);
 
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   const router = useRouter();
+  const firestore = useFirestore();
 
   // Ensure client hydration is complete before doing anything
   useEffect(() => {
@@ -31,8 +33,40 @@ export default function DashboardPage() {
     }
   }, [user, isUserLoading, isClient, router, auth]);
 
+  // Load logs from Firestore when user is authenticated
+  useEffect(() => {
+    const loadLogs = async () => {
+      if (!user || !firestore) {
+        setIsLoadingLogs(false);
+        return;
+      }
+
+      try {
+        setIsLoadingLogs(true);
+        const fetchedLogs = await getMoodLogs(firestore, user.uid, undefined, undefined, 60);
+        
+        // Transform Firestore logs to match WellnessLog interface
+        const transformedLogs: WellnessLog[] = fetchedLogs.map((log: any) => ({
+          date: log.date,
+          mood: log.mood,
+          activities: log.activities || [],
+        }));
+        
+        setLogs(transformedLogs);
+      } catch (error) {
+        console.error('Error loading logs from Firestore:', error);
+      } finally {
+        setIsLoadingLogs(false);
+      }
+    };
+
+    if (isClient && user) {
+      loadLogs();
+    }
+  }, [user, firestore, isClient]);
+
   // Show a loading state while Firebase is authenticating or the client is hydrating
-  if (!isClient || isUserLoading) {
+  if (!isClient || isUserLoading || isLoadingLogs) {
     return (
       <div className="space-y-8">
         <Skeleton className="h-64 w-full" />
