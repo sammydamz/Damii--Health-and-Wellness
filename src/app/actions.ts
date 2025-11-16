@@ -2,9 +2,8 @@
 
 import { z } from 'genkit';
 import { ai } from '@/ai/genkit';
+import { googleAI } from '@genkit-ai/google-genai';
 import type { Message } from '@/lib/types';
-
-// Combined Wellness Flow
 const WellnessSupportOutputSchema = z.object({
   emotionalSupport: z
     .string()
@@ -35,7 +34,7 @@ export async function analyzeWellnessInputAndProvideSupport(
   `;
 
   const { output } = await ai.generate({
-    model: 'gemini-1.5-flash',
+    model: googleAI.model('gemini-1.5-flash'),
     prompt,
     output: { schema: WellnessSupportOutputSchema },
   });
@@ -60,7 +59,7 @@ export async function getChatResponse(messages: Message[]): Promise<string> {
   const lastMessage = messages[messages.length - 1];
 
   const { text } = await ai.generate({
-    model: 'gemini-1.5-flash',
+    model: googleAI.model('gemini-1.5-flash'),
     prompt: lastMessage.content,
     history,
     config: {
@@ -243,7 +242,7 @@ Generate the personalized plan now:`;
   // 4) Call Genkit AI with optimized config
   try {
     const { output } = await ai.generate({
-      model: 'gemini-2.5-flash',
+      model: googleAI.model('gemini-2.5-flash'),
       prompt,
       output: { schema: WellnessPlanSchema },
       config: {
@@ -267,7 +266,7 @@ Generate the personalized plan now:`;
       const retryPrompt = prompt + '\n\nCRITICAL: You MUST return ONLY valid JSON. Do not wrap in markdown code blocks. Do not add any text before or after the JSON object.';
       
       const { text } = await ai.generate({ 
-        model: 'gemini-2.5-flash', 
+        model: googleAI.model('gemini-2.5-flash'), 
         prompt: retryPrompt,
         config: {
           temperature: 0.5,  // Lower temperature for more predictable output
@@ -295,102 +294,9 @@ Generate the personalized plan now:`;
     } catch (retryError) {
       console.error('[analyzeWellnessInputAndGeneratePlan] Retry also failed:', retryError);
       
-      // Generate context-aware fallback based on detected themes
-      const inputLower = sanitized.toLowerCase();
-      const themes = {
-        sleep: /sleep|insomnia|tired|exhausted|fatigue/i.test(inputLower),
-        stress: /stress|anxious|anxiety|overwhelm|pressure|worry/i.test(inputLower),
-        energy: /energy|tired|fatigue|exhausted|drained/i.test(inputLower),
-        mood: /sad|depressed|down|low mood|hopeless|lonely/i.test(inputLower),
-        nutrition: /eat|food|nutrition|diet|hungry|appetite/i.test(inputLower),
-      };
-
-      let title = 'Basic Wellness Plan';
-      let overview = 'A simple plan to get started with self-care and build healthy habits.';
-      let summaryBullets = [
-        'Drink 8 glasses of water daily to support overall health',
-        'Aim for 7-9 hours of quality sleep each night',
-        'Take short walks throughout the day to boost mood and energy'
-      ];
-      let steps: any[] = [
-        {
-          id: '1',
-          text: 'Drink a glass of water when you wake up',
-          category: 'hydration',
-          durationMinutes: 2,
-          priority: 'high',
-          when: 'morning'
-        },
-        {
-          id: '2',
-          text: 'Take a 10-minute walk',
-          category: 'movement',
-          durationMinutes: 10,
-          frequency: 'daily',
-          priority: 'medium',
-          when: 'morning or afternoon'
-        }
-      ];
-
-      // Customize fallback based on detected themes
-      if (themes.stress) {
-        title = 'Stress Management Starter Plan';
-        overview = 'A gentle plan to begin managing stress through breathing, movement, and self-care.';
-        summaryBullets = [
-          'Practice simple breathing exercises when feeling overwhelmed',
-          'Take short breaks throughout the day to reset',
-          'Prioritize one relaxing activity before bed'
-        ];
-        steps.push({
-          id: '3',
-          text: 'Practice 4-7-8 breathing: inhale 4 counts, hold 7, exhale 8',
-          category: 'breathing',
-          durationMinutes: 5,
-          frequency: 'as needed',
-          priority: 'high',
-          when: 'when feeling stressed'
-        });
-      }
-
-      if (themes.sleep) {
-        title = 'Sleep Support Starter Plan';
-        overview = 'A foundational plan to improve sleep quality through consistent routines and sleep hygiene.';
-        summaryBullets.push('Establish a consistent bedtime routine to signal sleep time');
-        steps.push({
-          id: '4',
-          text: 'Set a consistent bedtime and wake time (even weekends)',
-          category: 'sleep',
-          priority: 'high',
-          when: 'evening and morning'
-        });
-      }
-
-      if (themes.nutrition) {
-        steps.push({
-          id: '5',
-          text: 'Add one serving of vegetables to lunch or dinner',
-          category: 'nutrition',
-          frequency: 'daily',
-          priority: 'medium',
-          when: 'meals'
-        });
-      }
-
-      return {
-        emotionalSupport: 'Thank you for sharing how you\'re feeling. Taking the first step to focus on your wellness is meaningful. This plan offers a gentle starting point—you can adjust it as you go.',
-        wellnessTips: 'Start with small, achievable changes rather than trying to overhaul everything at once. Consistency matters more than perfection. Stay hydrated, move your body regularly, and prioritize rest.',
-        personalizedPlan: {
-          id: `fallback-${Date.now()}`,
-          title,
-          overview,
-          summaryBullets,
-          steps,
-          estimatedEffort: 'low',
-          timeframe: '1 week'
-        },
-        safetyFlag: false,
-        safetyMessage: null
-      } as WellnessPlanOutput;
+      // Throw error instead of returning fake fallback
+      // Let the UI handle showing user-friendly error message
+      throw new Error('Unable to generate wellness plan at this time. Please try again in a moment.');
     }
   }
 }
